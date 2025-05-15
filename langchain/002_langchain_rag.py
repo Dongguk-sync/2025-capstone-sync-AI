@@ -14,14 +14,17 @@ Original file is located at
 ## 0. 환경 구성
 """
 
-!pip install -q langchain langchain-openai langchain_community tiktoken chromadb
+# !pip install -q langchain langchain-openai langchain_community tiktoken chromadb
 
 import langchain
 
 langchain.__version__
 
-import os
-os.environ['OPENAI_API_KEY'] = 'OPENAI_API_KEY'
+from dotenv import load_dotenv
+
+load_dotenv()
+
+os.environ['OPENAI_API_KEY'] = os.getenv('SECRET_KEY')
 
 """## 1. RAG 파이프라인 개요
 

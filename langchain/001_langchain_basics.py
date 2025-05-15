@@ -11,13 +11,17 @@ Original file is located at
 ### 1) 라이브러리 설치
 """
 
-!pip install -q langchain langchain-openai tiktoken
-!pip install --upgrade langchain langchain-core langchain-openai
+# !pip install -q langchain langchain-openai tiktoken
+# !pip install --upgrade langchain langchain-core langchain-openai
 
 """### 2) OpenAI 인증키 설정"""
 
 import os
-os.environ['OPENAI_API_KEY'] = 'OPENAI_API_KEY'
+from dotenv import load_dotenv
+
+load_dotenv()
+
+os.environ['OPENAI_API_KEY'] = os.getenv('SECRET_KEY')
 
 from langchain_openai import ChatOpenAI
 
