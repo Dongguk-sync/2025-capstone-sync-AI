@@ -3,12 +3,9 @@
 import langchain
 import os
 
-langchain.__version__
-
 from dotenv import load_dotenv
 
 load_dotenv()
-
 os.environ['OPENAI_API_KEY'] = os.getenv('SECRET_KEY')
 
 # Step 1: Bring an answer key 
@@ -187,14 +184,35 @@ print("splits_answer_key[1]:\n", splits_answer_key[1])
 from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings
 
-# 벡터 db 생성
-vectorstore_student_answer = Chroma.from_texts(texts=splits_student_answer,
-                                    embedding=OpenAIEmbeddings())
+# 벡터 db 생성 - userID, subject, unit, type 으로 데이터 구분하기
+vectorstore_student_answer = Chroma.from_texts(
+    texts=splits_student_answer,
+    embedding=OpenAIEmbeddings(),
+    collection_name="user123",
+    persist_directory="./chroma_db",
+    metadatas=[{
+        "subject": "지구과학",
+        "unit": "판구조론의 정립 과정",
+        "type": "student_answer"
+    }] * len(splits_student_answer),
+)
+
+vectorstore_answer_key = Chroma.from_texts(
+    texts=splits_answer_key,
+    embedding=OpenAIEmbeddings(),
+    collection_name="user123",
+    persist_directory="./chroma_db",
+    metadatas=[{
+        "subject": "지구과학",
+        "unit": "판구조론의 정립 과정",
+        "type": "answer_key"
+    }] * len(splits_answer_key) ,
+)
 
 # 벡터 db에서 특정 내용과 관련된 청크 가져오기
 results = vectorstore_student_answer.similarity_search_with_score(
     splits_answer_key[1],  # 정답 청크
-    k=3  # 상위 5개 청크만 검색
+    k=3,  # 상위 5개 청크만 검색
 )
 
 # 유사도 점수가 0.3 이하(유사도 높음)인 것만 필터링
