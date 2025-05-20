@@ -17,6 +17,7 @@ Original file is located at
 # !pip install -q langchain langchain-openai langchain_community tiktoken chromadb
 
 import langchain
+import os
 
 langchain.__version__
 
