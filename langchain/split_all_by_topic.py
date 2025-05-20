@@ -96,7 +96,47 @@ docs_answer_key = '''# 판 구조론 정립 과정
 - 이후 ‘판구조론(plate tectonics)’으로 불림
 '''
 
-docs_student_answer = '''이번 수업은 판 구조론 정립 과정에 대해 정리해 보자. 판 구조로는 대륙 이동설, 멘틀 대류설, 해양저 확장설을 거치면서 완성되었다. 베게너가 주장한 대륙 이동설은 과거 모든 대륙이 모여 판게아라는 초대륙을 이루고 있었으며, 시간이 지나면서 판게아가 분리되고 이동하여 현재와 같은 대륙이 만들어졌다는 이론이다. 베게너는 남아메리카 동해안과 아프리카 서해안의 해안선이 일치하는 것과 서로 떨어진 여러 대륙에서 같은 종의 고생물 화석이 발견되는 것. 북아메리카와 유럽의 산맥 지질 구조가 연속적이고 여러 대륙의 빙하 흔적을 모으면 빙하의 흔적이 남극을 중심으로 분포하는 것을 대륙 이동설의 증거로 제시하였지만, 대륙이 움직이는 원동력을 제대로 설명하지 못해 대다수의 과학자들에게 인정받지 못했다. 홈스가 주장한 멘틀 대류설은 지구 중심부의 열에 의해 멘틀의 대류가 일어나고 멘틀 위에 떠 있는 대륙이 이동한다는 이론으로 이 역시 가설을 뒷받침할 수 있는 증거를 제시하지 못해 받아들여지지 않았다. 헤스와 디츠 두 과학자에 의해 발표된 해양저 확장설은 해령 아래에서 멘틀이 상승하여 새로운 해양 지각이 생성되면서 해양자가 확장된다는 이론이다. 해양저 확장설의 여러 증거들을 살펴보자. 첫 번째 증거는 고지자기 무늬의 대칭적 분포이다. 해량에서 지각이 생성될 때 광물은 당시 자기장의 방향으로 배열되고 해양 지각이 양옆으로 이동하면서 지구 자기장의 방향이 반대가 되면 새롭게 생성되는 지각의 광물은 반대 방향으로 좌화된다. 이 과정이 반복되면서 해령을 축으로 대칭적인 고지자기 줄무늬가 나타나게 되고, 이것은 해양전 확장설을 지지하는 강력한 증거가 된다. 두 번째 증거는 열곡과 변환 단층이 발견된다는 사실이다. 해양자가 확장하면서 해령의 중심부에 열곡이 만들어지고 해령의 위치에 따른 속도 차이에 의해 지각이 서로 어긋나는 변환 단층이 생성된다. 변환 단층에서는 지진이 자주 발생하지만 해령에서 멀리 떨어진 단열대에서는 지진이 발생하지 않는다. 세 번째 증거는 해양 지각의 나이와 해저 퇴적물의 두께이다. 해령 주변 해양 지각의 나이와 퇴적물의 두께를 측정하였더니 해령에서 멀어질수록 해양 지각의 나이는 많아지며 퇴적물의 두께는 두꺼워진다는 것을 발견하였고, 이 측정 자료는 해양저 확장설의 증거로 제시되었다. 마지막 증거는 섭입대 주변의 진원 깊이이다. 해구 부근의 지진은 섭입대를 따라 발생하는데 대륙 쪽으로 갈수록 진원의 깊이가 깊어진다는 사실을 발견하였고, 이것은 해양에서 생성된 해양 지각이 해구에서 소멸한다는 증거로 활용된다.'''
+docs_student_answer = '''# 판 구조론 정립 과정
+
+## 대륙 이동설
+
+### 개요
+베게너가 주장한 대륙 이동설은 과거 모든 대륙이 모여 판게아라는 초대륙을 이루고 있었으며, 시간이 지나면서 판게아가 분리되고 이동하여 현재와 같은 대륙이 만들어졌다는 이론이다.
+
+### 증거
+베게너는 남아메리카 동해안과 아프리카 서해안의 해안선이 일치하는 것과, 서로 떨어진 여러 대륙에서 같은 종의 고생물 화석이 발견되는 것, 북아메리카와 유럽의 산맥 지질 구조가 연속적이고, 여러 대륙의 빙하 흔적을 모으면 빙하의 흔적이 남극을 중심으로 분포하는 것을 대륙 이동설의 증거로 제시하였다.
+
+### 한계
+그러나 대륙이 움직이는 원동력을 제대로 설명하지 못해 대다수의 과학자들에게 인정받지 못했다.
+
+## 맨틀 대류설
+
+### 개요
+홈스가 주장한 맨틀 대류설은 지구 중심부의 열에 의해 맨틀의 대류가 일어나고, 맨틀 위에 떠 있는 대륙이 이동한다는 이론이다.
+
+### 한계
+이 역시 가설을 뒷받침할 수 있는 증거를 제시하지 못해 받아들여지지 않았다.
+
+## 해양저 확장설
+
+### 개요
+헤스와 디츠 두 과학자에 의해 발표된 해양저 확장설은 해령 아래에서 맨틀이 상승하여 새로운 해양 지각이 생성되면서 해양저가 확장된다는 이론이다.
+
+### 증거
+
+#### 1. 고지자기 무늬의 대칭적 분포
+해령에서 지각이 생성될 때 광물은 당시 자기장의 방향으로 배열되고, 해양 지각이 양옆으로 이동하면서 지구 자기장의 방향이 반대가 되면 새롭게 생성되는 지각의 광물은 반대 방향으로 자화된다.  
+이 과정이 반복되면서 해령을 축으로 대칭적인 고지자기 줄무늬가 나타나게 되고, 이것은 해양저 확장설을 지지하는 강력한 증거가 된다.
+
+#### 2. 열곡과 변환 단층의 발견
+해양저가 확장하면서 해령의 중심부에 열곡이 만들어지고, 해령의 위치에 따른 속도 차이에 의해 지각이 서로 어긋나는 변환 단층이 생성된다.  
+변환 단층에서는 지진이 자주 발생하지만, 해령에서 멀리 떨어진 단열대에서는 지진이 발생하지 않는다.
+
+#### 3. 해양 지각의 나이와 해저 퇴적물의 두께
+해령 주변 해양 지각의 나이와 퇴적물의 두께를 측정하였더니, 해령에서 멀어질수록 해양 지각의 나이는 많아지며 퇴적물의 두께는 두꺼워진다는 것을 발견하였고, 이 측정 자료는 해양저 확장설의 증거로 제시되었다.
+
+#### 4. 섭입대 주변의 진원 깊이
+해구 부근의 지진은 섭입대를 따라 발생하는데, 대륙 쪽으로 갈수록 진원의 깊이가 깊어진다는 사실을 발견하였고, 이것은 해양에서 생성된 해양 지각이 해구에서 소멸한다는 증거로 활용된다.'''
 # docs_student_answer = '''# 판 구조론 정립 과정
 
 # ## 대륙 이동설
@@ -167,18 +207,10 @@ def split_by_title(text):
     return chunks
 
 splits_answer_key = split_by_title(text=docs_answer_key)
-
-# student_answer: character 기준으로 답안 청크 나누기
-student_text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=300,
-    chunk_overlap=100,
-    separators=["\n\n", "\n", ".", "? ", "! ", " "]
-)
-splits_student_answer = student_text_splitter.split_text(docs_student_answer)
+splits_student_answer = split_by_title(text=docs_student_answer)
 
 print("len(splits_answer_key):", len(splits_answer_key))
 print("len(splits_student_answer):", len(splits_student_answer))
-print("splits_answer_key[1]:\n", splits_answer_key[1])
 
 # Step 3: Indexing
 # 벡터 DB에 Split된 text를 인덱싱해줌
@@ -193,18 +225,55 @@ vectorstore_student_answer = Chroma.from_texts(texts=splits_student_answer,
 
 # 벡터 db에서 특정 내용과 관련된 청크 가져오기
 results = vectorstore_student_answer.similarity_search_with_score(
-    splits_answer_key[1],  # 정답 청크
-    k=3  # 상위 5개 청크만 검색
+    splits_answer_key[1],   # 정답 청크
+    k=1                     # 상위 1개 청크만 검색 => topic 기준으로 split 했으므로 동일 topic 1개 추출
 )
 
 # 유사도 점수가 0.3 이하(유사도 높음)인 것만 필터링
 filtered_chunks = [doc for doc, score in results if score <= 0.3]
 
-for doc in filtered_chunks:
-    print(doc.page_content)
-
 def format_docs(docs):
     return '\n\n\n'.join(doc.page_content for doc in docs)
 
-print("len(chunk): ", len(filtered_chunks))
-print("Every related chunk:\n", format_docs(docs=filtered_chunks))
+all_chunk = format_docs(docs=filtered_chunks)
+
+# Step 4: Retrieval ~ Generation
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.output_parsers import StrOutputParser
+
+template = '''
+<Answer Key>에 기반하여 <Student Answer>를 평가해줘.
+
+- 피드백은 <Answer Key>를 기준으로 작성해.
+- <Answer Key>에 없는 정보는 평가하지 않아.
+- <Answer Key>의 형식을 유지하면서, 빠진 정보는 ==하이라이트== 처리하고, 틀린 내용은 ~~취소선~~으로 표시한 뒤, 수정 내용을 **볼드** 처리해줘.
+- 틀린 정보는 반드시 고쳐서 옆에 함께 보여줘.
+- 전체 문단 또는 항목을 새로 작성하거나 요약하지 말고, <Answer Key> 구조 그대로 보존한 채 항목 단위로 평가해줘.
+- 한국어로 작성해줘.
+
+<Answer key>:
+{answer_key}
+
+<Student answer>:
+{student_answer}
+'''
+
+prompt = ChatPromptTemplate.from_template(template)
+
+model = ChatOpenAI(model='gpt-4.1-nano-2025-04-14', temperature=0)
+
+
+rag_chain = (
+    RunnablePassthrough()
+    | prompt
+    | model
+    | StrOutputParser()
+)
+
+result = rag_chain.invoke({
+    'answer_key': splits_answer_key[1],
+    'student_answer': all_chunk
+})
+print("\nresult:\n", result)
