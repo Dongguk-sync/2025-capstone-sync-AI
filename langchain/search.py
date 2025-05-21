@@ -4,9 +4,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-base_dir = os.path.dirname(os.path.abspath(__file__))
-relative_path = os.getenv("PERSIST_DIRECTORY")
-persist_directory = os.path.join(base_dir, relative_path)
+persist_directory = os.getenv("PERSIST_DIRECTORY")
 
 os.environ["OPENAI_API_KEY"] = os.getenv("SECRET_KEY")
 
@@ -16,7 +14,7 @@ from langchain_openai import OpenAIEmbeddings
 
 username = "user123"
 
-client = chromadb.PersistentClient(path="../chroma_db")
+client = chromadb.PersistentClient(path=persist_directory)
 vectordb = Chroma(
     persist_directory=persist_directory,
     embedding_function=OpenAIEmbeddings(),

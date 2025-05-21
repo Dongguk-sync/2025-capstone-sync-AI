@@ -5,11 +5,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-
-base_dir = os.path.dirname(os.path.abspath(__file__))
-relative_path = os.getenv("PERSIST_DIRECTORY")
-persist_directory = os.path.join(base_dir, relative_path)
-
+persist_directory = os.getenv("PERSIST_DIRECTORY")
 os.environ["OPENAI_API_KEY"] = os.getenv("SECRET_KEY")
 
 # Step 1: Bring an answer key
@@ -23,8 +19,8 @@ with open("../dataset/student_answer.txt", "r", encoding="utf-8") as f:
 
 # Step 2: Split text
 # Text Split (Documents -> small chunks: Documents)
-from split_size_test import split_by_character
-from split_size_test import split_by_title
+from split import split_by_character
+from split import split_by_title
 
 splits_answer_key = split_by_title(text=docs_answer_key)
 splits_student_answer = split_by_character(text=docs_student_answer)

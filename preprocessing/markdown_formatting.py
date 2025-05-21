@@ -29,7 +29,14 @@ def markdown_formatting(text):
 
 if __name__ == "__main__":
     text_path = "../dataset/판구조론 정립 과정 교안_extracted_text.txt"
+    output_path = "../dataset/판구조론 정립 과정_answer_key.txt"
+
     with open(text_path, "r", encoding="utf-8") as f:
         text = f.read()
+
     result = markdown_formatting(text=text)
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(result)
+
     print("포맷팅 성공!\n결과:\n" + result)
