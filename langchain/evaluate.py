@@ -25,11 +25,12 @@ from langchain_core.output_parsers import StrOutputParser
 
 template = """Evaluate <student answer> based on the <answer key>.
 
-- In three areas: Missing, Incorrect, and Summary. 
+-  Write your feedback in three areas: missing, incorrect, and summary. There are no other additional comments.
 - Feedback is based on the answer key.
 - Don't evaluate information that's not in the answer key.
 - Recognize that foreign proper nouns may be spelled differently.
 - Please write in markdown format and Korean.
+- Use # for the entire topic, ## for the three areas, missing, incorrect, and summary and - for the specific feedback.
 
 <Answer key>:
 {answer_key}
