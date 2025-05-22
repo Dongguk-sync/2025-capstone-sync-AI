@@ -73,14 +73,12 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
-template = """Evaluate <Student Answer> based on <Answer Key>.
+template = """Evaluate <student answer> based on the <answer key>.
 
-- Base your feedback on the <Answer Key>.
-- Don't evaluate information that isn't in the <Answer Key>.
-- Recognize that foreign proper nouns can be spelled differently.
-- Maintain the format of the <Answer Key>, highlighting missing information, marking incorrect information with a strikethrough, and bolding corrections.
-- Be sure to correct the incorrect information and show it alongside the corrections.
-- Do not rewrite or summarize entire paragraphs or items, but rather evaluate them on a per-item basis, keeping the <Answer Key> structure intact.
+- Feedback is based on the answer key.
+- Don't evaluate information that's not in the answer key.
+- Recognize that foreign proper nouns may be spelled differently.
+- Separate missing and incorrect information.
 - Please write in Korean.
 
 <Answer key>:

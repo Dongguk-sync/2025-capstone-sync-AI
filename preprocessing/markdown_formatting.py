@@ -11,11 +11,27 @@ load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("SECRET_KEY")
 
 
-def markdown_formatting(text):
+def markdown_formatting_student_answer(text):
     template = """- Fix typos
     - Convert the given content to markdown format in korean
     - Use # for the entire article, ## the medium topic, and ### for the small topic.
     - The article is an answer to a test and should not be added to or deleted.
+
+    <content>:
+    {content}
+    """
+    prompt = ChatPromptTemplate.from_template(template)
+    model = ChatOpenAI(model="gpt-4.1-nano-2025-04-14", temperature=0)
+    rag_chain = RunnablePassthrough() | prompt | model | StrOutputParser()
+    result = rag_chain.invoke({"content": text})
+    return result
+
+
+def markdown_formatting_answer_key(text):
+    template = """- Convert the given content to markdown format in korean
+    - The given text is from a textbook. Extract only the concepts, not the exercises in the textbook.
+    - Use # for the entire article, ## the medium topic, and ### for the small topic.
+    - The article is an answer key to a test and should not be added to or deleted.
 
     <content>:
     {content}
@@ -34,7 +50,7 @@ if __name__ == "__main__":
     with open(text_path, "r", encoding="utf-8") as f:
         text = f.read()
 
-    result = markdown_formatting(text=text)
+    result = markdown_formatting_answer_key(text=text)
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(result)
