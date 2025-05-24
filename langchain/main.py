@@ -6,15 +6,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 persist_directory = os.getenv("PERSIST_DIRECTORY")
+dataset_directory = os.getenv("DATASET_DIRECTORY")
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 # Step 1: Bring an answer key
 # (local 임시 텍스트 -> 나중에 DB에서 정답 txt, 답안 txt 받아오기)
 
-with open("../dataset/answer_key.txt", "r", encoding="utf-8") as f:
+with open(dataset_directory + "/" + "answer_key.txt", "r", encoding="utf-8") as f:
     docs_answer_key = f.read()
 
-with open("../dataset/student_answer.txt", "r", encoding="utf-8") as f:
+with open(dataset_directory + "/" + "student_answer.txt", "r", encoding="utf-8") as f:
     docs_student_answer = f.read()
 
 # Step 2: Split text
