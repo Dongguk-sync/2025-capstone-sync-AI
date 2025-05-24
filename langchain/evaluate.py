@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 persist_directory = os.getenv("PERSIST_DIRECTORY")
-os.environ["OPENAI_API_KEY"] = os.getenv("SECRET_KEY")
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 # Step 1: Bring text files
 # (local 임시 텍스트 -> 나중에 DB에서 정답 txt, 답안 txt 받아오기)
@@ -25,12 +25,15 @@ from langchain_core.output_parsers import StrOutputParser
 
 template = """Evaluate <student answer> based on the <answer key>.
 
--  Write your feedback in three areas: missing, incorrect, and summary. There are no other additional comments.
 - Feedback is based on the answer key.
 - Don't evaluate information that's not in the answer key.
+- Focus on conceptual accuracy rather than wording
 - Recognize that foreign proper nouns may be spelled differently.
 - Please write in markdown format and Korean.
-- Use # for the entire topic, ## for the three areas, missing, incorrect, and summary and - for the specific feedback.
+- Organize your feedback under these 3 headings: 
+  - ## 누락된 내용 (Missing)
+  - ## 틀린 내용 (Incorrect)
+  - ## 요약 평가 (Summary)
 
 <Answer key>:
 {answer_key}
@@ -41,11 +44,13 @@ template = """Evaluate <student answer> based on the <answer key>.
 
 prompt = ChatPromptTemplate.from_template(template)
 
-model = ChatOpenAI(model="gpt-4.1-nano-2025-04-14", temperature=0)
+model = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
 
 rag_chain = RunnablePassthrough() | prompt | model | StrOutputParser()
 
 result = rag_chain.invoke(
     {"answer_key": docs_answer_key, "student_answer": docs_student_answer}
 )
+print("\nanswer_key:\n", docs_answer_key)
+print("\nstudent_answer:\n", docs_student_answer)
 print("\nresult:\n", result)

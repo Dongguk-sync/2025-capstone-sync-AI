@@ -1,6 +1,5 @@
 from pdf2image import convert_from_path
 import pytesseract
-import os
 
 
 def ocr_from_pdf(pdf_path, dpi=300, lang="kor+eng"):  # 한글과 영어가 혼용된 경우

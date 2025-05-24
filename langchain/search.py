@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 persist_directory = os.getenv("PERSIST_DIRECTORY")
 
-os.environ["OPENAI_API_KEY"] = os.getenv("SECRET_KEY")
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 import chromadb
 from langchain_community.vectorstores import Chroma

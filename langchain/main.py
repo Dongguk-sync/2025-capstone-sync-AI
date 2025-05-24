@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 persist_directory = os.getenv("PERSIST_DIRECTORY")
-os.environ["OPENAI_API_KEY"] = os.getenv("SECRET_KEY")
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 # Step 1: Bring an answer key
 # (local 임시 텍스트 -> 나중에 DB에서 정답 txt, 답안 txt 받아오기)
