@@ -24,6 +24,33 @@ def split_by_title(text):
     return chunks
 
 
+# ###를 기준으로 청크 나누기 + 상위 제목(#, ##)과 하위 내용을 자동으로 덧붙이기
+def split_by_subtitle(text):
+    chunks = []
+    current_chunk = ""
+    h1, h2 = "", ""  # # 대제목, ## 중제목
+
+    lines = text.strip().splitlines()
+
+    for line in lines:
+        if line.startswith("# "):
+            h1 = line
+        elif line.startswith("## "):
+            h2 = line
+        elif line.startswith("### "):
+            if current_chunk:
+                chunks.append(current_chunk.strip())
+            current_chunk = ""
+            current_chunk += f"{h1}\n{h2}\n{line}\n"
+        else:
+            current_chunk += line + "\n"
+
+    if current_chunk:
+        chunks.append(current_chunk.strip())
+
+    return chunks
+
+
 # student_answer: character 기준으로 답안 청크 나누기 (단, 문장의 끝에서 자르기)
 def split_by_character(text):
 
@@ -171,12 +198,10 @@ if __name__ == "__main__":
     os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
     dataset_directory = os.getenv("DATASET_DIRECTORY")
 
-    with open(
-        dataset_directory + "/" + "student_answer.txt", "r", encoding="utf-8"
-    ) as f:
-        docs_student_answer = f.read()
+    with open(dataset_directory + "/" + "answer_key.txt", "r", encoding="utf-8") as f:
+        docs_answer_key = f.read()
 
-    chunks = split_by_ruled_sentence(docs_student_answer)
+    chunks = split_by_subtitle(docs_answer_key)
 
     for i, chunk in enumerate(chunks):
         print(f"\n\n---chunk[{i}]---\n{chunk}")

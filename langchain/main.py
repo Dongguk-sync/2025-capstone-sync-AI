@@ -2,6 +2,10 @@
 import langchain
 import os
 
+from langchain_teddynote import logging
+
+logging.langsmith("Beakji-evaluate")
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -20,11 +24,11 @@ with open(dataset_directory + "/" + "student_answer.txt", "r", encoding="utf-8")
 
 # Step 2: Split text
 # Text Split (Documents -> small chunks: Documents)
-from split import split_by_character
-from split import split_by_title
+from split import split_by_ruled_sentence
+from split import split_by_subtitle
 
-splits_answer_key = split_by_title(text=docs_answer_key)
-splits_student_answer = split_by_character(text=docs_student_answer)
+splits_answer_key = split_by_subtitle(text=docs_answer_key)
+splits_student_answer = split_by_ruled_sentence(text=docs_student_answer)
 
 # Step 3: Indexing
 # Indexing (Texts -> Embedding -> Store)
@@ -37,25 +41,34 @@ vectorstore = Chroma.from_texts(
     embedding=OpenAIEmbeddings(),
     persist_directory=persist_directory,
     collection_name="user123",
-    metadatas=[
-        {"subject": "지구과학", "unit": "판구조론의 정립 과정", "type": "answer_key"}
-    ]
-    * len(splits_answer_key)
-    + [
-        {
-            "subject": "지구과학",
-            "unit": "판구조론의 정립 과정",
-            "type": "student_answer",
-            "num": "1",  # 복습 횟수
-        }
-    ]
-    * len(splits_student_answer),
+    metadatas=(
+        [
+            {
+                "subject": "지구과학",
+                "unit": "판구조론의 정립 과정",
+                "type": "answer_key",
+            }
+            for _ in splits_answer_key
+        ]
+        + [
+            {
+                "subject": "지구과학",
+                "unit": "판구조론의 정립 과정",
+                "type": "student_answer",
+                "num": "1",
+            }
+            for _ in splits_student_answer
+        ]
+    ),
 )
 
 # 벡터 db에서 특정 내용과 관련된 청크 가져오기
 results = vectorstore.similarity_search_with_score(
     splits_answer_key[1],  # 정답 청크
-    k=1,  # 유사도 상위 1개 청크만 검색
+    k=3,  # 유사도 상위 3개 청크만 검색
+    filter={
+        "$and": [{"subject": {"$eq": "지구과학"}}, {"type": {"$eq": "student_answer"}}]
+    },
 )
 
 # 유사도 점수가 0.3 이하(유사도 높음)인 것만 필터링
