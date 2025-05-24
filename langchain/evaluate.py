@@ -1,3 +1,7 @@
+"""
+prompt: 정답 + 답안 (단순 비교)
+"""
+
 # Step 0: Set env
 import langchain
 import os
@@ -5,16 +9,26 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-persist_directory = os.getenv("PERSIST_DIRECTORY")
+
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+
+from langchain_teddynote import logging
+
+logging.langsmith(project_name=os.getenv("LANGSMITH_PROJECT"))
+
+persist_directory = os.getenv("PERSIST_DIRECTORY")
+
+# 정답, 답안 파일 경로 지정
+answer_key_path = os.getenv("DATASET_DIRECTORY") + "/" + "answer_key.txt"
+student_answer_path = os.getenv("DATASET_DIRECTORY") + "/" + "student_answer.txt"
 
 # Step 1: Bring text files
 # (local 임시 텍스트 -> 나중에 DB에서 정답 txt, 답안 txt 받아오기)
 
-with open("../dataset/answer_key.txt", "r", encoding="utf-8") as f:
+with open(answer_key_path, "r", encoding="utf-8") as f:
     docs_answer_key = f.read()
 
-with open("../dataset/student_answer.txt", "r", encoding="utf-8") as f:
+with open(student_answer_path, "r", encoding="utf-8") as f:
     docs_student_answer = f.read()
 
 # Step 2: Retrieval ~ Generation
