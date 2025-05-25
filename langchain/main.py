@@ -22,13 +22,21 @@ with open(dataset_directory + "/" + "answer_key.txt", "r", encoding="utf-8") as 
 with open(dataset_directory + "/" + "student_answer.txt", "r", encoding="utf-8") as f:
     docs_student_answer = f.read()
 
+username = "user123"
+
+vectordb = Chroma(
+    persist_directory=persist_directory,
+    embedding_function=OpenAIEmbeddings(),
+    collection_name=username,
+)
 # Step 2: Split text
 # Text Split (Documents -> small chunks: Documents)
-from split import split_by_ruled_sentence
-from split import split_by_subtitle
+from split import split_student_answer
+from split import split_answer_key
+from split import format_docs
 
-splits_answer_key = split_by_subtitle(text=docs_answer_key)
-splits_student_answer = split_by_ruled_sentence(text=docs_student_answer)
+splits_answer_key = split_answer_key(text=docs_answer_key)
+splits_student_answer = split_student_answer(text=docs_student_answer)
 
 # Step 3: Indexing
 # Indexing (Texts -> Embedding -> Store)
@@ -72,13 +80,9 @@ results = vectorstore.similarity_search_with_score(
 )
 
 # 유사도 점수가 0.3 이하(유사도 높음)인 것만 필터링
-filtered_chunks = [doc for doc, score in results if score <= 0.3]
+filtered_chunks = [doc for doc, score in results if score <= 0.25]
 
-
-def format_docs(docs):
-    return "\n\n\n".join(doc.page_content for doc in docs)
-
-
+# 추출한 청크 통합
 all_chunk = format_docs(docs=filtered_chunks)
 
 # Step 4: Retrieval ~ Generation
@@ -91,9 +95,13 @@ template = """Evaluate <student answer> based on the <answer key>.
 
 - Feedback is based on the answer key.
 - Don't evaluate information that's not in the answer key.
+- Focus on conceptual accuracy rather than wording
 - Recognize that foreign proper nouns may be spelled differently.
-- Separate missing and incorrect information.
-- Please write in Korean.
+- Please write in markdown format and Korean.
+- Organize your feedback under these 3 headings: 
+  - ## 누락된 내용 (Missing)
+  - ## 틀린 내용 (Incorrect)
+  - ## 요약 평가 (Summary)
 
 <Answer key>:
 {answer_key}
@@ -103,15 +111,29 @@ template = """Evaluate <student answer> based on the <answer key>.
 """
 
 prompt = ChatPromptTemplate.from_template(template)
-
-model = ChatOpenAI(model="gpt-4.1-nano-2025-04-14", temperature=0)
-
+model = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
 rag_chain = RunnablePassthrough() | prompt | model | StrOutputParser()
 
-result = rag_chain.invoke(
-    {"answer_key": splits_answer_key[1], "student_answer": all_chunk}
-)
-print("\nresult:\n", result)
+
+# 여러 정답 청크에 대해 유사한 학생 답변을 검색하고 평가
+results = []
+for i, answer_key_chunk in enumerate(splits_answer_key):
+    retrieved = vectorstore.similarity_search_with_score(
+        answer_key_chunk,
+        k=3,
+        filter={
+            "$and": [
+                {"subject": {"$eq": "지구과학"}},
+                {"type": {"$eq": "student_answer"}},
+            ]
+        },
+    )
+    filtered_chunks = [doc for doc, score in retrieved if score <= 0.25]
+    all_chunk = format_docs(docs=filtered_chunks)
+    result = rag_chain.invoke(
+        {"answer_key": answer_key_chunk, "student_answer": all_chunk}
+    )
+    results.append(result)
 
 # feedback을 ChromaDB에 저장 (=> 필요한가?)
 vectorstore.add_texts(
@@ -123,7 +145,7 @@ vectorstore.add_texts(
             "type": "feedback",
         }
     ]
-    * len(result),
+    * len(results),
 )
 
 # local에 영구 저장

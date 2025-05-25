@@ -46,7 +46,7 @@ prompt = PromptTemplate.from_template(
     """You are an assistant for question-answering tasks. 
 Use the following pieces of retrieved context to answer the question. 
 If you don't know the answer, just say that you don't know. 
-Answer in Korean.
+
 
 #Previous Chat History:
 {chat_history}
@@ -107,7 +107,7 @@ rag_with_history.invoke(
 
 rag_with_history.invoke(
     # 질문 입력
-    {"question": "이전 답변을 영어로 번역해주세요."},
+    {"question": "이전 질문에 대한 ai 응답을 영어로 번역해주세요."},
     # 세션 ID 기준으로 대화를 기록합니다.
     config={"configurable": {"session_id": "rag123"}},
 )

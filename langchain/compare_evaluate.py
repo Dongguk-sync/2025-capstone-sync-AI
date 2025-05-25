@@ -14,7 +14,7 @@ os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 from langchain_teddynote import logging
 
-logging.langsmith(project_name=os.getenv("LANGSMITH_PROJECT"))
+logging.langsmith(project_name=os.getenv("Beakji"))
 
 persist_directory = os.getenv("PERSIST_DIRECTORY")
 

@@ -14,7 +14,6 @@ from langchain_openai import OpenAIEmbeddings
 
 username = "user123"
 
-client = chromadb.PersistentClient(path=persist_directory)
 vectordb = Chroma(
     persist_directory=persist_directory,
     embedding_function=OpenAIEmbeddings(),
