@@ -35,9 +35,6 @@ def load_answer_key_chunks(vectorstore: Chroma, subject: str, unit: str):
     return sorted_chunks
 
 
-# def evaluate_all_chunks(vectorstore, subject, unit, sorted_chunks):
-
-
 def evaluate_all_chunks(vectorstore, subject, unit, sorted_chunks):
     all_feedback = []
 

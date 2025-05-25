@@ -71,6 +71,47 @@ def split_answer_key(vectorstore: Chroma, subject: str, unit: str, text: str):
     return chunks
 
 
+# ##를 기준으로 청크 나누기 + 상위 제목(#) 포함
+def split_answer_key_second(vectorstore: Chroma, subject: str, unit: str, text: str):
+    chunks = []
+    current_chunk = ""
+    h1 = ""  # # 대제목
+
+    lines = text.strip().splitlines()
+
+    for line in lines:
+        if line.startswith("# "):
+            h1 = line
+        elif line.startswith("## "):
+            if current_chunk.strip():
+                chunks.append(current_chunk.strip())
+            current_chunk = f"{h1}\n{line}\n"
+        elif line.startswith("### "):
+            current_chunk += line + "\n"
+        else:
+            current_chunk += line + "\n"
+
+    if current_chunk.strip():
+        chunks.append(current_chunk.strip())
+
+    vectorstore.add_texts(
+        texts=chunks,
+        ids=[f"{subject}_{unit}_answer_key_second_{i}" for i in range(len(chunks))],
+        metadatas=(
+            [
+                {
+                    "subject": subject,
+                    "unit": unit,
+                    "type": "answer_key_second",
+                }
+                for _ in chunks
+            ]
+        ),
+    )
+
+    return chunks
+
+
 # 의미 단위를 만나면 그 문장의 끝에서 split (문장이 끊기지 않게)
 def split_student_answer(vectorstore: Chroma, subject: str, unit: str, text: str):
     # 1. 문장 단위로 분리 (마침표, 물음표, 느낌표 포함)
@@ -86,9 +127,6 @@ def split_student_answer(vectorstore: Chroma, subject: str, unit: str, text: str
         "두 번째",
         "세 번째",
         "마지막",
-        "1.",
-        "2.",
-        "3.",
         "그러나",
         "하지만",
         "따라서",
@@ -96,27 +134,23 @@ def split_student_answer(vectorstore: Chroma, subject: str, unit: str, text: str
         "그래서",
         "예를 들어",
         "결과적으로",
-        "정의",
-        "개념",
-        "특징",
-        "이론",
-        "공식",
-        "설명",
     ]
 
     for sentence in sentences:
-        if current_chunk:
-            current_chunk += " " + sentence
-        else:
-            current_chunk = sentence
-
-        # 문장에 키워드가 있으면 여기서 chunk 분리
+        # 키워드가 포함된 문장을 만나면 그 앞에서 청크 자르고 이 문장은 다음 청크에 포함
         if any(keyword in sentence for keyword in keywords):
-            chunks.append(current_chunk.strip())
-            current_chunk = ""
+            if current_chunk.strip():
+                chunks.append(current_chunk.strip())
+                current_chunk = ""
+            current_chunk = sentence  # 키워드 문장을 다음 청크의 시작으로 포함
+        else:
+            if current_chunk:
+                current_chunk += " " + sentence
+            else:
+                current_chunk = sentence
 
         # chunk 크기 제한(선택사항)
-        elif len(current_chunk) > MAX_CHUNK_LENGTH:
+        if len(current_chunk) > MAX_CHUNK_LENGTH:
             chunks.append(current_chunk.strip())
             current_chunk = ""
 
@@ -158,7 +192,9 @@ if __name__ == "__main__":
     with open(student_answer_path, "r", encoding="utf-8") as f:
         docs_student_answer = f.read()
 
-    answer_key_chunks = split_answer_key(vectorstore, subject, unit, docs_answer_key)
+    answer_key_chunks = split_answer_key_second(
+        vectorstore, subject, unit, docs_answer_key
+    )
     student_answer_chunks = split_student_answer(
         vectorstore, subject, unit, docs_student_answer
     )
