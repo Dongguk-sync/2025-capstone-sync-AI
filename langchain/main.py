@@ -39,7 +39,7 @@ from chunk_evaluate import chunk_evaluate
 def evaluate_all_chunks(vectorstore, subject, unit, sorted_chunks):
     all_feedback = []
 
-    for chunk in enumerate(sorted_chunks):
+    for chunk in sorted_chunks:
         result = chunk_evaluate(vectorstore, subject, unit, chunk)
         if result:
             all_feedback.append(result)
@@ -64,4 +64,4 @@ if __name__ == "__main__":
     vectorstore = get_or_create_user_chromadb(user_id)
     answer_key_chunks = load_answer_key_chunks(vectorstore, subject, unit)
 
-    print(answer_key_chunks)
+    evaluate_all_chunks(vectorstore, subject, unit, answer_key_chunks)
