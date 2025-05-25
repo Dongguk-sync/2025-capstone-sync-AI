@@ -15,14 +15,6 @@ persist_directory = os.getenv("PERSIST_DIRECTORY")
 dataset_directory = os.getenv("DATASET_DIRECTORY")
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
-username = "user123"
-
-vectorstore = Chroma(
-    persist_directory=persist_directory,
-    embedding_function=OpenAIEmbeddings(),
-    collection_name=username,
-)
-
 
 # answer_key vector 불러오기 -> chunk 순서대로 정렬
 def load_answer_key_chunks(collection, doc_id):

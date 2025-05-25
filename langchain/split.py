@@ -16,6 +16,16 @@ from langchain_openai import OpenAIEmbeddings
 import re
 import os
 
+from signup import get_or_create_user_chromadb
+
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+persist_directory = os.getenv("PERSIST_DIRECTORY")
+dataset_directory = os.getenv("DATASET_DIRECTORY")
+
 MAX_CHUNK_LENGTH = 300
 
 
@@ -127,7 +137,6 @@ def split_student_answer(vectorstore: Chroma, subject: str, unit: str, text: str
             ]
         ),
     )
-
     return chunks
 
 
@@ -136,36 +145,22 @@ def join_docs(docs):
 
 
 if __name__ == "__main__":
-    import os
-    from dotenv import load_dotenv
-
-    load_dotenv()
-    os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
-    persist_directory = os.getenv("PERSIST_DIRECTORY")
-    dataset_directory = os.getenv("DATASET_DIRECTORY")
-
     username = "user123"
     answer_key_path = dataset_directory + "/" + "answer_key.txt"
     student_answer_path = dataset_directory + "/" + "student_answer.txt"
     subject = "지구과학"
     unit = "판구조론 정립 과정"
 
-    vectorstore = Chroma(
-        persist_directory=persist_directory,
-        embedding_function=OpenAIEmbeddings(),
-        collection_name=username,
-    )
+    vectorstore = get_or_create_user_chromadb(username)
 
     with open(answer_key_path, "r", encoding="utf-8") as f:
         docs_answer_key = f.read()
     with open(student_answer_path, "r", encoding="utf-8") as f:
         docs_student_answer = f.read()
 
-    answer_key_chunks = split_answer_key(
-        vectorstore=vectorstore, subject=subject, unit=unit, text=docs_answer_key
-    )
+    answer_key_chunks = split_answer_key(vectorstore, subject, unit, docs_answer_key)
     student_answer_chunks = split_student_answer(
-        vectorstore=vectorstore, subject=subject, unit=unit, text=docs_student_answer
+        vectorstore, subject, unit, docs_student_answer
     )
 
     vectorstore.persist()

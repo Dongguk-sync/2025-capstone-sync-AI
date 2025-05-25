@@ -5,6 +5,7 @@ from langchain_teddynote import logging
 logging.langsmith("Beakji-evaluate")
 
 from dotenv import load_dotenv
+from langchain_chroma import Chroma
 
 load_dotenv()
 persist_directory = os.getenv("PERSIST_DIRECTORY")
@@ -12,11 +13,12 @@ os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings
-from split import join_docs
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+from split import join_docs
+from signup import get_or_create_user_chromadb
 
 SIMILARITY_THRESHOLD = 0.25
 
@@ -28,7 +30,7 @@ def get_evaluation_prompt():
     - Don't evaluate information that's not in the answer key.
     - Focus on conceptual accuracy rather than wording
     - Recognize that foreign proper nouns may be spelled differently.
-    - Please write in markdown format and Korean.
+    - Please write in JSON format and Korean.
     - Organize your feedback under these 2 headings: 
         - ## 누락된 내용 (Missing)
         - ## 틀린 내용 (Incorrect)
@@ -38,6 +40,12 @@ def get_evaluation_prompt():
 
     <Student answer>:
     {student_answer}
+
+    <return example>:
+    {{
+        "missing": [...],
+        "incorrect": [...],
+    }}
     """
 
 
@@ -62,7 +70,7 @@ def chunk_evaluate(vectorstore: Chroma, subject: str, unit: str, answer_key_chun
     ]
 
     if not filtered_chunks:
-        logging.warning("❗ 유사한 학생 답변 없음")
+        print("❗ 유사한 학생 답변 없음")
         return None
 
     # 추출한 청크 통합
@@ -95,3 +103,20 @@ def chunk_evaluate(vectorstore: Chroma, subject: str, unit: str, answer_key_chun
     )
 
     return result
+
+
+if __name__ == "__main__":
+    user_id = "user123"
+    subject = "지구과학"
+    unit = "판구조론 정립 과정"
+    index = 0
+    answer_key_id = f"{subject}_{unit}_answer_key_{index}"
+
+    vectorstore = get_or_create_user_chromadb(user_id)
+    retrieved = vectorstore.get(ids=[answer_key_id])
+    if not retrieved["documents"]:
+        print(f"❌ ID '{answer_key_id}'에 해당하는 answer key를 찾을 수 없습니다.")
+        exit(1)
+    answer_key_chunk = retrieved["documents"][0]
+    result = chunk_evaluate(vectorstore, subject, unit, answer_key_chunk)
+    print(result)
