@@ -8,7 +8,6 @@ persist_directory = os.getenv("PERSIST_DIRECTORY")
 
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
-import chromadb
 from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings
 

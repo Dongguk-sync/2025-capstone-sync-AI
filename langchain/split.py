@@ -1,3 +1,12 @@
+"""
+split functions:
+
+1. split text into chunks
+2. store chunks into Chroma DB
+3. return chunks
+
+"""
+
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
@@ -6,9 +15,6 @@ from langchain_openai import OpenAIEmbeddings
 
 import re
 import os
-
-load_dotenv()
-persist_directory = os.getenv("PERSIST_DIRECTORY")
 
 
 # ###를 기준으로 청크 나누기 + 상위 제목(#, ##)과 하위 내용을 자동으로 덧붙이기
@@ -43,8 +49,9 @@ def split_answer_key(vectorstore: Chroma, subject: str, unit: str, text: str):
                     "subject": subject,
                     "unit": unit,
                     "type": "answer_key",
+                    "chunk_index": i,
                 }
-                for _ in chunks
+                for i in range(len(chunks))
             ]
         ),
     )
@@ -131,12 +138,39 @@ if __name__ == "__main__":
 
     load_dotenv()
     os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+    persist_directory = os.getenv("PERSIST_DIRECTORY")
     dataset_directory = os.getenv("DATASET_DIRECTORY")
 
-    with open(dataset_directory + "/" + "answer_key.txt", "r", encoding="utf-8") as f:
+    username = "user123"
+    answer_key_path = dataset_directory + "/" + "answer_key.txt"
+    student_answer_path = dataset_directory + "/" + "student_answer.txt"
+    subject = "지구과학"
+    unit = "판구조론 정립 과정"
+
+    vectorstore = Chroma(
+        persist_directory=persist_directory,
+        embedding_function=OpenAIEmbeddings(),
+        collection_name=username,
+    )
+
+    with open(answer_key_path, "r", encoding="utf-8") as f:
         docs_answer_key = f.read()
+    with open(student_answer_path, "r", encoding="utf-8") as f:
+        docs_student_answer = f.read()
 
-    chunks = split_answer_key(docs_answer_key)
+    answer_key_chunks = split_answer_key(
+        vectorstore=vectorstore, subject=subject, unit=unit, text=docs_answer_key
+    )
+    student_answer_chunks = split_student_answer(
+        vectorstore=vectorstore, subject=subject, unit=unit, text=docs_student_answer
+    )
 
-    for i, chunk in enumerate(chunks):
+    vectorstore.persist()
+
+    print("\nAnswer_key_chunks:\n")
+    for i, chunk in enumerate(answer_key_chunks):
+        print(f"\n\n---chunk[{i}]---\n{chunk}")
+
+    print("\Student_answer_chunks:\n")
+    for i, chunk in enumerate(student_answer_chunks):
         print(f"\n\n---chunk[{i}]---\n{chunk}")
