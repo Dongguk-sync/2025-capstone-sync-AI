@@ -14,7 +14,7 @@ os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings
-from split import format_docs
+from split import join_docs
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
@@ -44,7 +44,7 @@ def chunk_evaluate(vectorstore: Chroma, subject: str, unit: str, answer_key_chun
         return None
 
     # 추출한 청크 통합
-    all_chunk = format_docs(docs=filtered_chunks)
+    all_chunk = join_docs(docs=filtered_chunks)
 
     template = """Evaluate <student answer> based on the <answer key>.
 

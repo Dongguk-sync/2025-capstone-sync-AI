@@ -16,6 +16,8 @@ from langchain_openai import OpenAIEmbeddings
 import re
 import os
 
+MAX_CHUNK_LENGTH = 300
+
 
 # ###를 기준으로 청크 나누기 + 상위 제목(#, ##)과 하위 내용을 자동으로 덧붙이기
 def split_answer_key(vectorstore: Chroma, subject: str, unit: str, text: str):
@@ -31,7 +33,7 @@ def split_answer_key(vectorstore: Chroma, subject: str, unit: str, text: str):
         elif line.startswith("## "):
             h2 = line
         elif line.startswith("### "):
-            if current_chunk:
+            if current_chunk.strip():
                 chunks.append(current_chunk.strip())
             current_chunk = ""
             current_chunk += f"{h1}\n{h2}\n{line}\n"
@@ -43,15 +45,15 @@ def split_answer_key(vectorstore: Chroma, subject: str, unit: str, text: str):
 
     vectorstore.add_texts(
         texts=chunks,
+        ids=[f"{subject}_{unit}_answer_key_{i}" for i in range(len(chunks))],
         metadatas=(
             [
                 {
                     "subject": subject,
                     "unit": unit,
                     "type": "answer_key",
-                    "chunk_index": i,
                 }
-                for i in range(len(chunks))
+                for _ in chunks
             ]
         ),
     )
@@ -104,7 +106,7 @@ def split_student_answer(vectorstore: Chroma, subject: str, unit: str, text: str
             current_chunk = ""
 
         # chunk 크기 제한(선택사항)
-        elif len(current_chunk) > 300:
+        elif len(current_chunk) > MAX_CHUNK_LENGTH:
             chunks.append(current_chunk.strip())
             current_chunk = ""
 
@@ -113,6 +115,7 @@ def split_student_answer(vectorstore: Chroma, subject: str, unit: str, text: str
 
     vectorstore.add_texts(
         texts=chunks,
+        ids=[f"{subject}_{unit}_student_answer_{i}" for i in range(len(chunks))],
         metadatas=(
             [
                 {
@@ -128,7 +131,7 @@ def split_student_answer(vectorstore: Chroma, subject: str, unit: str, text: str
     return chunks
 
 
-def format_docs(docs):
+def join_docs(docs):
     return "\n\n\n".join(doc.page_content for doc in docs)
 
 

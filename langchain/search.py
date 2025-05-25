@@ -28,8 +28,8 @@ results = vectordb.similarity_search(
 )
 
 
-def format_docs(docs):
+def join_docs(docs):
     return "\n\n\n".join(doc.page_content for doc in docs)
 
 
-print("\n\nquery와 연관된 벡터 검색:\n", format_docs(results))
+print("\n\nquery와 연관된 벡터 검색:\n", join_docs(results))
