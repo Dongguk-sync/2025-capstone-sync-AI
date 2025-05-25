@@ -20,7 +20,7 @@ from langchain_core.output_parsers import StrOutputParser
 from split import join_docs
 from signup import get_or_create_user_chromadb
 
-SIMILARITY_THRESHOLD = 0.25
+SIMILARITY_THRESHOLD = 0.3
 
 
 def get_evaluation_prompt():
@@ -101,7 +101,6 @@ def chunk_evaluate(vectorstore: Chroma, subject: str, unit: str, answer_key_chun
             }
         ],
     )
-
     return result
 
 

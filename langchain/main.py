@@ -1,4 +1,5 @@
 # Step 0: Set env
+import json
 import langchain
 import os
 
@@ -11,6 +12,7 @@ logging.langsmith("Beakji-evaluate")
 from dotenv import load_dotenv
 from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings
+from chunk_evaluate import chunk_evaluate
 
 load_dotenv()
 persist_directory = os.getenv("PERSIST_DIRECTORY")
@@ -33,7 +35,7 @@ def load_answer_key_chunks(vectorstore: Chroma, subject: str, unit: str):
     return sorted_chunks
 
 
-from chunk_evaluate import chunk_evaluate
+# def evaluate_all_chunks(vectorstore, subject, unit, sorted_chunks):
 
 
 def evaluate_all_chunks(vectorstore, subject, unit, sorted_chunks):
@@ -42,7 +44,12 @@ def evaluate_all_chunks(vectorstore, subject, unit, sorted_chunks):
     for chunk in sorted_chunks:
         result = chunk_evaluate(vectorstore, subject, unit, chunk)
         if result:
-            all_feedback.append(result)
+            try:
+                parsed = json.loads(result)
+                all_feedback.append(parsed)
+            except json.JSONDecodeError:
+                print("⚠️ JSON 파싱 실패: 결과를 건너뜀")
+                continue
 
     merged_feedback = {"missing": [], "incorrect": []}
 
@@ -50,6 +57,7 @@ def evaluate_all_chunks(vectorstore, subject, unit, sorted_chunks):
         merged_feedback["missing"].extend(fb.get("missing", []))
         merged_feedback["incorrect"].extend(fb.get("incorrect", []))
 
+    # 중복 제거
     merged_feedback["missing"] = list(set(merged_feedback["missing"]))
     merged_feedback["incorrect"] = list(set(merged_feedback["incorrect"]))
 
@@ -64,4 +72,6 @@ if __name__ == "__main__":
     vectorstore = get_or_create_user_chromadb(user_id)
     answer_key_chunks = load_answer_key_chunks(vectorstore, subject, unit)
 
-    evaluate_all_chunks(vectorstore, subject, unit, answer_key_chunks)
+    print(answer_key_chunks)
+    result = evaluate_all_chunks(vectorstore, subject, unit, answer_key_chunks)
+    print(result)
