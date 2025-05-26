@@ -96,7 +96,7 @@ def split_answer_key_second(vectorstore: Chroma, subject: str, unit: str, text: 
 
     vectorstore.add_texts(
         texts=chunks,
-        ids=[f"{subject}_{unit}_answer_key_second_{i}" for i in range(len(chunks))],
+        ids=[f"{subject}_{unit}_answer_key_{i}" for i in range(len(chunks))],
         metadatas=(
             [
                 {

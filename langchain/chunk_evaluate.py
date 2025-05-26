@@ -20,7 +20,7 @@ from langchain_core.output_parsers import StrOutputParser
 from split import join_docs
 from signup import get_or_create_user_chromadb
 
-SIMILARITY_THRESHOLD = 0.3
+SIMILARITY_THRESHOLD = 0.2
 
 
 def get_evaluation_prompt():
@@ -54,7 +54,7 @@ def chunk_evaluate(vectorstore: Chroma, subject: str, unit: str, answer_key_chun
     # 벡터 db에서 정답과 관련된 답안 청크 가져오기
     similar_chunks = vectorstore.similarity_search_with_score(
         answer_key_chunk,  # 정답 청크
-        k=3,  # 유사도 상위 3개 청크만 검색
+        k=5,  # 유사도 상위 5개 청크만 검색
         filter={
             "$and": [
                 {"subject": {"$eq": subject}},
@@ -64,17 +64,17 @@ def chunk_evaluate(vectorstore: Chroma, subject: str, unit: str, answer_key_chun
         },
     )
 
-    # 유사도 점수가 0.25 이하(유사도 높음)인 것만 필터링
+    # 유사도 점수가 SIMILARITY_THRESHOLD 이하(유사도 높음)인 것만 필터링
     filtered_chunks = [
         doc for doc, score in similar_chunks if score <= SIMILARITY_THRESHOLD
     ]
 
     if not filtered_chunks:
-        print("❗ 유사한 학생 답변 없음")
+        print("❗ 유사한 학생 답변 없음 (전체 항목 누락)")
         return None
 
     # 추출한 청크 통합
-    all_student_answer_chunk = join_docs(docs=filtered_chunks)
+    all_student_answer_chunk = join_docs(filtered_chunks)
 
     template = get_evaluation_prompt()
 
@@ -113,9 +113,10 @@ if __name__ == "__main__":
 
     vectorstore = get_or_create_user_chromadb(user_id)
     retrieved = vectorstore.get(ids=[answer_key_id])
+
     if not retrieved["documents"]:
         print(f"❌ ID '{answer_key_id}'에 해당하는 answer key를 찾을 수 없습니다.")
         exit(1)
+
     answer_key_chunk = retrieved["documents"][0]
     result = chunk_evaluate(vectorstore, subject, unit, answer_key_chunk)
-    print(result)

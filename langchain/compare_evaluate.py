@@ -14,7 +14,7 @@ os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 from langchain_teddynote import logging
 
-logging.langsmith(project_name=os.getenv("Beakji"))
+logging.langsmith(project_name=os.getenv("LANGSMITH_PROJECT"))
 
 persist_directory = os.getenv("PERSIST_DIRECTORY")
 
@@ -58,7 +58,7 @@ template = """Evaluate <student answer> based on the <answer key>.
 
 prompt = ChatPromptTemplate.from_template(template)
 
-model = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
+model = ChatOpenAI(model="gpt-4-turbo-2024-04-09", temperature=0)
 
 rag_chain = RunnablePassthrough() | prompt | model | StrOutputParser()
 
