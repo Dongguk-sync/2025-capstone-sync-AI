@@ -7,64 +7,95 @@ import langchain
 import os
 
 from dotenv import load_dotenv
-
-load_dotenv()
-
-os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+import langchain_chroma
 
 from langchain_teddynote import logging
+
+load_dotenv()
+os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 
 logging.langsmith(project_name=os.getenv("LANGSMITH_PROJECT"))
 
 persist_directory = os.getenv("PERSIST_DIRECTORY")
+dataset_directory = os.getenv("DATASET_DIRECTORY")
 
-# 정답, 답안 파일 경로 지정
-answer_key_path = os.getenv("DATASET_DIRECTORY") + "/" + "answer_key.txt"
-student_answer_path = os.getenv("DATASET_DIRECTORY") + "/" + "student_answer.txt"
-
-# Step 1: Bring text files
-# (local 임시 텍스트 -> 나중에 DB에서 정답 txt, 답안 txt 받아오기)
-
-with open(answer_key_path, "r", encoding="utf-8") as f:
-    docs_answer_key = f.read()
-
-with open(student_answer_path, "r", encoding="utf-8") as f:
-    docs_student_answer = f.read()
-
-# Step 2: Retrieval ~ Generation
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
-template = """Evaluate <student answer> based on the <answer key>.
 
-- Feedback is based on the answer key.
-- Don't evaluate information that's not in the answer key.
-- Focus on conceptual accuracy rather than wording
-- Recognize that foreign proper nouns may be spelled differently.
-- Please write in markdown format and Korean.
-- Organize your feedback under these 3 headings: 
-  - ## 누락된 내용 (Missing)
-  - ## 틀린 내용 (Incorrect)
-  - ## 요약 평가 (Summary)
+def get_evaluation_prompt():
+    return """Evaluate <student answer> based on the <answer key>.
 
-<Answer key>:
-{answer_key}
+    - Feedback is based on the answer key.
+    - Don't evaluate information that's not in the answer key.
+    - Focus on conceptual accuracy rather than wording
+    - Recognize that foreign proper nouns may be spelled differently.
+    - Please write in markdown format and Korean.
+    - Organize your feedback under these 3 headings: 
+      - # {unit} Feedback
+      - ## 누락된 내용 (Missing)
+      - ## 틀린 내용 (Incorrect)
 
-<Student answer>:
-{student_answer}
-"""
+    <Answer key>:
+    {answer_key}
 
-prompt = ChatPromptTemplate.from_template(template)
+    <Student answer>:
+    {student_answer}
+    """
 
-model = ChatOpenAI(model="gpt-4-turbo-2024-04-09", temperature=0)
 
-rag_chain = RunnablePassthrough() | prompt | model | StrOutputParser()
+def compare_evaluate(
+    vectorstore: langchain_chroma,
+    answer_key_path: str,
+    student_answer_path: str,
+    subject: str,
+    unit: str,
+) -> str:
+    # Step 1: Bring text files
+    with open(answer_key_path, "r", encoding="utf-8") as f:
+        docs_answer_key = f.read()
 
-result = rag_chain.invoke(
-    {"answer_key": docs_answer_key, "student_answer": docs_student_answer}
-)
-print("\nanswer_key:\n", docs_answer_key)
-print("\nstudent_answer:\n", docs_student_answer)
-print("\nresult:\n", result)
+    with open(student_answer_path, "r", encoding="utf-8") as f:
+        docs_student_answer = f.read()
+
+    # Step 2: Retrieval ~ Generation
+    prompt = ChatPromptTemplate.from_template(get_evaluation_prompt())
+    model = ChatOpenAI(model="gpt-4-turbo-2024-04-09", temperature=0)
+    rag_chain = RunnablePassthrough() | prompt | model | StrOutputParser()
+
+    result = rag_chain.invoke(
+        {
+            "unit": unit,
+            "answer_key": docs_answer_key,
+            "student_answer": docs_student_answer,
+        }
+    )
+
+    vectorstore.add_texts(
+        texts=[result],
+        metadatas=[
+            {
+                "subject": subject,
+                "unit": unit,
+                "type": "feedback",
+            }
+        ],
+    )
+    return result
+
+
+if __name__ == "__main__":
+    from signup import get_or_create_user_chromadb
+
+    user_id = "user123"
+    subject = "지구과학"
+    unit = "판구조론 정립 과정"
+
+    vectorstore = get_or_create_user_chromadb(user_id=user_id)
+
+    answer_key_path = dataset_directory + "/" + unit + "_answer_key.txt"
+    student_answer_path = dataset_directory + "/" + unit + "_student_answer.txt"
+
+    compare_evaluate(vectorstore, answer_key_path, student_answer_path, subject, unit)
