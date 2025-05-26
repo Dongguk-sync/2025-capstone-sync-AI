@@ -1,15 +1,11 @@
 """
-prompt: 정답 + 답안 (단순 비교)
+의미 기반 채점 => 정답 + 답안 (전체 text)
 """
 
-# Step 0: Set env
-import langchain
 import os
-
-from dotenv import load_dotenv
 import langchain_chroma
-
 from langchain_teddynote import logging
+from dotenv import load_dotenv
 
 load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
@@ -34,8 +30,8 @@ def get_evaluation_prompt():
     - Recognize that foreign proper nouns may be spelled differently.
     - Please write in markdown format and Korean.
     - Organize your feedback under these 3 headings: 
-      - # {unit} Feedback
-      - ## 누락된 내용 (Missing)
+      - # 복습 피드백: {unit}
+      - ## 누락 내용 (Missing)
       - ## 틀린 내용 (Incorrect)
 
     <Answer key>:
