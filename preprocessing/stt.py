@@ -8,7 +8,7 @@ load_dotenv()
 
 class ClovaSpeechClient:
     # Clova Speech invoke URL
-    invoke_url = os.getenv("CLOVW_INVOKE_URL")
+    invoke_url = os.getenv("CLOVA_INVOKE_URL")
     # Clova Speech secret key
     secret = os.getenv("CLOVA_API_KEY")
 
