@@ -1,33 +1,26 @@
-# 단계 0: 환경 설정
-from dotenv import load_dotenv
-
-load_dotenv()
-
-from langchain_teddynote import logging
-
-logging.langsmith("Beakji-chat")
-
-
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import PromptTemplate
-from langchain_openai import ChatOpenAI
-from langchain_community.chat_message_histories import ChatMessageHistory
-from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_openai import ChatOpenAI
-from langchain_core.output_parsers import StrOutputParser
-from operator import itemgetter
-
-import chromadb
-from langchain_community.vectorstores import Chroma
-from langchain_openai import OpenAIEmbeddings
+"""
+챗봇 프롬프트: 질문 + 관련 answer_key + 관련 feedback
+=> 프롬프팅을 통해 LLM이 데이터를 구분하고, 질문 유형(내용/위치/피드백)에 맞는 응답 생성
+"""
 
 import os
 from dotenv import load_dotenv
+from langchain_teddynote import logging
+from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_openai import ChatOpenAI
+from langchain_openai import OpenAIEmbeddings
+import chromadb
+from langchain_community.vectorstores import Chroma
+from langchain_community.chat_message_histories import ChatMessageHistory
+from operator import itemgetter
 
 load_dotenv()
+logging.langsmith("Beakji-chat")
 
 username = "user123"
 persist_directory = os.getenv("PERSIST_DIRECTORY")
+
 
 client = chromadb.PersistentClient(path=persist_directory)
 vectordb = Chroma(
@@ -36,17 +29,19 @@ vectordb = Chroma(
     collection_name=username,
 )
 
-# 단계 5: 검색기(Retriever) 생성
-# 문서에 포함되어 있는 정보를 검색하고 생성합니다.
 retriever = vectordb.as_retriever()
+answer_key_retriever = vectordb.as_retriever(
+    search_kwargs={"filter": {"type": "answer_key"}}
+)
+feedback_retriever = vectordb.as_retriever(
+    search_kwargs={"filter": {"type": "feedback"}}
+)
 
-# 단계 6: 프롬프트 생성(Create Prompt)
-# 프롬프트를 생성합니다.
 prompt = PromptTemplate.from_template(
-    """You are an assistant for question-answering tasks. 
+    """You are an assistant for question-answering tasks.
 Use the following pieces of retrieved context to answer the question. 
-If you don't know the answer, just say that you don't know. 
-
+If the user asks for the location of the answer key for that content, return the “url” of a vector with the extracted metadatas as “type”:"answer_key”.
+If you don't know the answer, just say that you don't know.
 
 #Previous Chat History:
 {chat_history}
@@ -55,25 +50,28 @@ If you don't know the answer, just say that you don't know.
 {question} 
 
 #Context: 
-{context} 
+- Answer Key:
+{answer_key}
+
+- Feedback:
+{feedback}
 
 #Answer:"""
 )
 
-# 단계 7: 언어모델(LLM) 생성
-# 모델(LLM) 을 생성합니다.
 llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
 
-# 단계 8: 체인(Chain) 생성
+# LangChain Runnable 구성
 chain = (
     {
-        "context": itemgetter("question") | retriever,
         "question": itemgetter("question"),
         "chat_history": itemgetter("chat_history"),
+        "answer_key": itemgetter("question") | answer_key_retriever,
+        "feedback": itemgetter("question") | feedback_retriever,
     }
-    | prompt
-    | llm
-    # StrOutputParser() -> 응답 형식이 "메세지"이어야 ChatMessageHistory 가능하므로 없앰
+    | prompt  # 프롬프트 적용
+    | llm  # LLM 호출
+    # StrOutputParser 생략: ChatMessageHistory에서 메시지 그대로 사용하기 위함
 )
 
 # 세션 기록을 저장할 딕셔너리
@@ -98,16 +96,25 @@ rag_with_history = RunnableWithMessageHistory(
     history_messages_key="chat_history",  # 기록 메시지의 키
 )
 
-rag_with_history.invoke(
-    # 질문 입력
-    {"question": "베게너가 주장한 판구조론은?"},
-    # 세션 ID 기준으로 대화를 기록합니다.
-    config={"configurable": {"session_id": "rag123"}},
-)
 
-rag_with_history.invoke(
-    # 질문 입력
-    {"question": "이전 질문에 대한 ai 응답을 영어로 번역해주세요."},
-    # 세션 ID 기준으로 대화를 기록합니다.
-    config={"configurable": {"session_id": "rag123"}},
-)
+if __name__ == "__main__":
+    rag_with_history.invoke(
+        # 질문 입력
+        {"question": "베게너가 주장한 판구조론은?"},
+        # 세션 ID 기준으로 대화를 기록합니다.
+        config={"configurable": {"session_id": "rag123"}},
+    )
+
+    rag_with_history.invoke(
+        # 질문 입력
+        {"question": "그 내용 교안의 어디에 있어?"},
+        # 세션 ID 기준으로 대화를 기록합니다.
+        config={"configurable": {"session_id": "rag123"}},
+    )
+
+    rag_with_history.invoke(
+        # 질문 입력
+        {"question": "판구조론에서 내가 틀렸던 내용이 뭐였지?"},
+        # 세션 ID 기준으로 대화를 기록합니다.
+        config={"configurable": {"session_id": "rag123"}},
+    )
