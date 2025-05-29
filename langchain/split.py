@@ -30,7 +30,7 @@ MAX_CHUNK_LENGTH = 300
 
 
 # ###를 기준으로 청크 나누기 + 상위 제목(#, ##)과 하위 내용을 자동으로 덧붙이기
-def split_answer_key(vectorstore: Chroma, subject: str, unit: str, text: str):
+def split_answer_key(vectorstore: Chroma, subject: str, unit: str, text: str, url: str):
     chunks = []
     current_chunk = ""
     h1, h2 = "", ""  # # 대제목, ## 중제목
@@ -62,6 +62,7 @@ def split_answer_key(vectorstore: Chroma, subject: str, unit: str, text: str):
                     "subject": subject,
                     "unit": unit,
                     "type": "answer_key",
+                    "url": url,
                 }
                 for _ in chunks
             ]
@@ -192,8 +193,8 @@ if __name__ == "__main__":
     with open(student_answer_path, "r", encoding="utf-8") as f:
         docs_student_answer = f.read()
 
-    answer_key_chunks = split_answer_key_second(
-        vectorstore, subject, unit, docs_answer_key
+    answer_key_chunks = split_answer_key(
+        vectorstore, subject, unit, docs_answer_key, url="hello"
     )
     student_answer_chunks = split_student_answer(
         vectorstore, subject, unit, docs_student_answer
