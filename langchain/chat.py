@@ -4,16 +4,18 @@
 """
 
 import os
+from operator import itemgetter
 from dotenv import load_dotenv
-from langchain_teddynote import logging
+
+# langchain 관련 묶음
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_openai import ChatOpenAI
-from langchain_openai import OpenAIEmbeddings
-import chromadb
 from langchain_community.vectorstores import Chroma
 from langchain_community.chat_message_histories import ChatMessageHistory
-from operator import itemgetter
+
+# 기타 외부 모듈
+from langchain_teddynote import logging
 
 load_dotenv()
 logging.langsmith("Beakji-chat")
@@ -22,7 +24,6 @@ username = "user123"
 persist_directory = os.getenv("PERSIST_DIRECTORY")
 
 
-client = chromadb.PersistentClient(path=persist_directory)
 vectordb = Chroma(
     persist_directory=persist_directory,
     embedding_function=OpenAIEmbeddings(),
