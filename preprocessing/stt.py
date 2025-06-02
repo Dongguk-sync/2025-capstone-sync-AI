@@ -7,10 +7,9 @@ load_dotenv()
 
 
 class ClovaSpeechClient:
-    # Clova Speech invoke URL
-    invoke_url = os.getenv("CLOVA_INVOKE_URL")
-    # Clova Speech secret key
-    secret = os.getenv("CLOVA_API_KEY")
+    def __init__(self):
+        self.invoke_url = os.getenv("CLOVA_INVOKE_URL")
+        self.secret = os.getenv("CLOVA_API_KEY")
 
     def req_url(
         self,
@@ -49,54 +48,17 @@ class ClovaSpeechClient:
             data=json.dumps(request_body).encode("UTF-8"),
         )
 
-    def req_object_storage(
-        self,
-        data_key,
-        completion,
-        callback=None,
-        userdata=None,
-        forbiddens=None,
-        boostings=None,
-        wordAlignment=True,
-        fullText=True,
-        diarization=None,
-        sed=None,
-    ):
-        request_body = {
-            "dataKey": data_key,
-            "language": "ko-KR",
-            "completion": completion,
-            "callback": callback,
-            "userdata": userdata,
-            "wordAlignment": wordAlignment,
-            "fullText": fullText,
-            "forbiddens": forbiddens,
-            "boostings": boostings,
-            "diarization": diarization,
-            "sed": sed,
-        }
-        headers = {
-            "Accept": "application/json;UTF-8",
-            "Content-Type": "application/json;UTF-8",
-            "X-CLOVASPEECH-API-KEY": self.secret,
-        }
-        return requests.post(
-            headers=headers,
-            url=self.invoke_url + "/recognizer/object-storage",
-            data=json.dumps(request_body).encode("UTF-8"),
-        )
-
     def req_upload(
         self,
         file,
-        completion,
+        completion="sync",
         callback=None,
         userdata=None,
         forbiddens=None,
         boostings=None,
         wordAlignment=True,
         fullText=True,
-        diarization=None,
+        diarization={"enable": False},
         sed=None,
     ):
         request_body = {
@@ -127,7 +89,7 @@ class ClovaSpeechClient:
         response = requests.post(
             headers=headers, url=self.invoke_url + "/recognizer/upload", files=files
         )
-        return response
+        return response.text
 
 
 if __name__ == "__main__":
