@@ -1,12 +1,11 @@
 """
 회원가입시 Chroma DB의 collection 생성
-collection은 user 당 하나 생성되고, 본인의 collection만 접근 가능
-collection_name이 user_id인 Chroma 반환
+- collection은 user 당 하나 생성되고, 본인의 collection만 접근 가능
+- collection_name이 user_id인 Chroma 반환
 """
 
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
-import os
 import os
 
 

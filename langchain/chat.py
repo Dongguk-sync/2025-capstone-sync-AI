@@ -17,9 +17,10 @@ from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_teddynote import logging
 from get_chroma import get_or_create_user_chromadb
 
+from fastapi import FastAPI, APIRouter, Depends, Request, Body
+from pydantic import BaseModel
 
-def initialize():
-    logging.langsmith("Beakji-chat")
+logging.langsmith("Beakji-chat")
 
 
 def get_chat_prompt():
@@ -88,40 +89,42 @@ def get_chat_response(
     )
 
 
-if __name__ == "__main__":
-    initialize()
-    username = "user123"
-    vectordb = get_or_create_user_chromadb(user_id=username)
+class ChatRequest(BaseModel):
+    question: str
+    session_id: str
+    user_id: str
+
+
+def get_vectorstores(user_id: str):
+    vectordb = get_or_create_user_chromadb(user_id=user_id)
     answer_key_retriever = vectordb.as_retriever(
         search_kwargs={"filter": {"type": "answer_key"}}
     )
     feedback_retriever = vectordb.as_retriever(
         search_kwargs={"filter": {"type": "feedback"}}
     )
+    return answer_key_retriever, feedback_retriever
 
+
+app = FastAPI()
+router = APIRouter()
+
+
+@router.post("/chat")
+def chat(
+    chat_request: ChatRequest = Body(...),
+    retrievers=Depends(
+        lambda chat_request=Body(...): get_vectorstores(chat_request.user_id)
+    ),
+):
+    answer_key_retriever, feedback_retriever = retrievers
     result = get_chat_response(
-        "베게너가 주장한 판구조론은?",
-        "rag123",
+        chat_request.question,
+        chat_request.session_id,
         answer_key_retriever,
         feedback_retriever,
     )
-    # rag_with_history.invoke(
-    #     # 질문 입력
-    #     {"question": "베게너가 주장한 판구조론은?"},
-    #     # 세션 ID 기준으로 대화를 기록합니다.
-    #     config={"configurable": {"session_id": "rag123"}},
-    # )
+    return {"answer": result}
 
-    # rag_with_history.invoke(
-    #     # 질문 입력
-    #     {"question": "그 내용 교안의 어디에 있어?"},
-    #     # 세션 ID 기준으로 대화를 기록합니다.
-    #     config={"configurable": {"session_id": "rag123"}},
-    # )
 
-    # rag_with_history.invoke(
-    #     # 질문 입력
-    #     {"question": "판구조론에서 내가 틀렸던 내용이 뭐였지?"},
-    #     # 세션 ID 기준으로 대화를 기록합니다.
-    #     config={"configurable": {"session_id": "rag123"}},
-    # )
+app.include_router(router)
