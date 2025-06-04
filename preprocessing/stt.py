@@ -10,7 +10,11 @@ import os
 import requests
 import json
 from dotenv import load_dotenv
-from preprocessing import correct_typo
+
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.output_parsers import StrOutputParser
 
 load_dotenv()
 
@@ -101,13 +105,27 @@ class ClovaSpeechClient:
         return response.text
 
 
+def correct_typo(text: str):
+    template = """- Fix typos
+    - The content is an answer to a test and should not be added to or deleted.
+    - Write in Korean
+
+    <content>:
+    {content}
+    """
+    prompt = ChatPromptTemplate.from_template(template)
+    model = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
+    rag_chain = RunnablePassthrough() | prompt | model | StrOutputParser()
+    result = rag_chain.invoke({"content": text})
+    return result
+
+
 def preprocess_student_answer(
     audio_file_path: str,
     unit: str,
     dataset_directory: str,
     clova_client: ClovaSpeechClient,
 ) -> str:
-
     stt_result_json = clova_client.req_upload(
         file=audio_file_path,
         completion="sync",
