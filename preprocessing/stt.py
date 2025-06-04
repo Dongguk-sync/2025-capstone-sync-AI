@@ -6,8 +6,11 @@
 3. 결과 저장 및 반환
 """
 
-import sys
 import os
+from fastapi import Depends, HTTPException
+from fastapi.responses import JSONResponse
+from langchain_chroma import Chroma
+from pydantic import BaseModel
 import requests
 import json
 from dotenv import load_dotenv
@@ -21,6 +24,7 @@ from langchain_core.output_parsers import StrOutputParser
 from preprocessing.split import split_student_answer
 
 load_dotenv()
+router = APIRouter()
 
 
 class ClovaSpeechClient:
@@ -54,7 +58,7 @@ class ClovaSpeechClient:
         return response.text
 
 
-def correct_typo(text: str) -> str:
+async def correct_typo(text: str) -> str:
     template = """- Fix typos
     - The content is an answer to a test and should not be added to or deleted.
     - Write in Korean
@@ -65,60 +69,56 @@ def correct_typo(text: str) -> str:
     prompt = ChatPromptTemplate.from_template(template)
     model = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
     rag_chain = RunnablePassthrough() | prompt | model | StrOutputParser()
-    result = rag_chain.invoke({"content": text})
-    return result
+    return await rag_chain.ainvoke({"content": text})
 
 
-def preprocess_student_answer(
-    audio_file_path: str,
-    unit: str,
-    subject: str,
-    username: str,
-    dataset_directory: str,
-    clova_client: ClovaSpeechClient,
-) -> str:
-    stt_result_json = clova_client.req_upload(
-        file=audio_file_path,
-        completion="sync",
-        diarization={"enable": False},
-    )
+class PreprocessVoiceRequest(BaseModel):
+    user_id: str
+    subject: str
+    unit: str
+    audio_file_path: str
 
+
+def get_chroma_db(req: PreprocessVoiceRequest = Depends()) -> Chroma:
+    return get_or_create_user_chromadb(user_id=req.user_id)
+
+
+def get_clova(req: PreprocessVoiceRequest = Depends()) -> ClovaSpeechClient:
+    return ClovaSpeechClient()
+
+
+@router.post("/preprocess_voice")
+async def preprocess_voice(
+    req: PreprocessVoiceRequest,
+    vectorstore=Depends(get_chroma_db),
+    clova_client=Depends(get_clova),
+) -> JSONResponse:
+    # 1. STT 요청
     try:
+        stt_result_json = clova_client.req_upload(
+            req.audio_file_path, completion="sync"
+        )
         stt_text = json.loads(stt_result_json)["text"]
     except Exception as e:
-        raise ValueError(f"STT 결과 파싱 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"STT 실패: {e}")
 
-    corrected_text = correct_typo(stt_text)
+    if not stt_text.strip():
+        raise HTTPException(status_code=422, detail="STT 결과가 비어 있습니다.")
 
-    # 텍스트 저장
-    output_path = os.path.join(dataset_directory, f"{unit}_student_answer.txt")
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(corrected_text)
+    # 2. 맞춤법 교정
+    try:
+        corrected_text = await correct_typo(stt_text)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"맞춤법 교정 실패: {e}")
 
-    # 벡터 저장
-    vectorstore = get_or_create_user_chromadb(username)
-    split_student_answer(vectorstore, subject, unit, corrected_text)
+    if not corrected_text.strip():
+        raise HTTPException(status_code=422, detail="교정된 텍스트가 비어 있습니다.")
 
-    return corrected_text
+    # 3. 청크 분할 및 저장
+    try:
+        split_student_answer(vectorstore, req.subject, req.unit, corrected_text)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Chroma 저장 실패: {e}")
 
-
-if __name__ == "__main__":
-    client = ClovaSpeechClient()
-
-    # 예시 값 (테스트 시 실제 값으로 변경)
-    file_path = "/Users/kimsuyoung/Desktop/대학/25-1/캡스톤디자인1/test/판구조론 정립과정(해양저 확장설) [dnYUwb7j5Xc].mp3"
-    dataset_dir = "./dataset"
-    subject = "지구과학"
-    unit = "판구조론"
-    username = "kimsuyoung"
-
-    # 전처리 및 벡터 저장까지 실행
-    vectorstore = get_or_create_user_chromadb(username)
-    text = preprocess_student_answer(
-        audio_file_path=file_path,
-        unit=unit,
-        subject=subject,
-        username=username,
-        dataset_directory=dataset_dir,
-        clova_client=client,
-    )
+    # 4. 결과 반환
+    return JSONResponse(content={"corrected_text": corrected_text})

@@ -21,7 +21,6 @@ from langchain_core.output_parsers import StrOutputParser
 from preprocessing.split import _store_chunks
 
 load_dotenv()
-
 router = APIRouter()
 
 
@@ -99,10 +98,10 @@ def get_chroma_db(req: PreprocessPdfRequest = Depends()) -> Chroma:
     return get_or_create_user_chromadb(user_id=req.user_id)
 
 
-@router.post("/preprocess")
+@router.post("/preprocess_pdf")
 async def preprocess_pdf(
     req: PreprocessPdfRequest,
-    vectorstore=Depends(get_chroma_db),
+    vectorstore: Chroma = Depends(get_chroma_db),
 ):
     # 파일 존재 확인
     if not os.path.exists(req.pdf_path):
