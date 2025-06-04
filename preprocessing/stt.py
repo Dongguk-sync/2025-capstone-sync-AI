@@ -93,9 +93,14 @@ class ClovaSpeechClient:
 
 
 if __name__ == "__main__":
-    res = ClovaSpeechClient().req_upload(
-        file="/Users/kimsuyoung/Desktop/대학/25-1/캡스톤디자인1/test/판구조론 정립과정(해양저 확장설) [dnYUwb7j5Xc].mp3",
+    client = ClovaSpeechClient()
+
+    file_path = "/Users/kimsuyoung/Desktop/대학/25-1/캡스톤디자인1/test/판구조론 정립과정(해양저 확장설) [dnYUwb7j5Xc].mp3"
+
+    result = client.req_upload(
+        file_path=file_path,
         completion="sync",
         diarization={"enable": False},
     )
-    print(res.text)
+
+    print(result)

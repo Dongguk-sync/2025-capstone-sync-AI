@@ -3,26 +3,30 @@
 """
 
 import os
-import langchain_chroma
-from langchain_teddynote import logging
 from dotenv import load_dotenv
 
-load_dotenv()
-os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
-
-logging.langsmith(project_name=os.getenv("LANGSMITH_PROJECT"))
-
-persist_directory = os.getenv("PERSIST_DIRECTORY")
-dataset_directory = os.getenv("DATASET_DIRECTORY")
-
+import langchain_chroma
+from langchain_teddynote import logging
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
 
+def initialize_environment():
+    load_dotenv()
+    os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
+    logging.langsmith(project_name=os.getenv("LANGSMITH_PROJECT"))
+
+    return {
+        "persist_directory": os.getenv("PERSIST_DIRECTORY"),
+        "dataset_directory": os.getenv("DATASET_DIRECTORY"),
+    }
+
+
 def get_evaluation_prompt():
-    return """Evaluate <student answer> based on the <answer key>.
+    return ChatPromptTemplate.from_template(
+        """Evaluate <student answer> based on the <answer key>.
 
     - Feedback is based on the answer key.
     - Don't evaluate information that's not in the answer key.
@@ -40,9 +44,10 @@ def get_evaluation_prompt():
     <Student answer>:
     {student_answer}
     """
+    )
 
 
-def compare_evaluate(
+def get_evaluate_result(
     vectorstore: langchain_chroma,
     answer_key_path: str,
     student_answer_path: str,
@@ -57,9 +62,10 @@ def compare_evaluate(
         docs_student_answer = f.read()
 
     # Step 2: Retrieval ~ Generation
-    prompt = ChatPromptTemplate.from_template(get_evaluation_prompt())
     model = ChatOpenAI(model="gpt-4-turbo-2024-04-09", temperature=0)
-    rag_chain = RunnablePassthrough() | prompt | model | StrOutputParser()
+    rag_chain = (
+        RunnablePassthrough() | get_evaluation_prompt() | model | StrOutputParser()
+    )
 
     result = rag_chain.invoke(
         {
@@ -69,7 +75,7 @@ def compare_evaluate(
         }
     )
 
-    vectorstore.add_texts(
+    vectorstore.Chroma.add_texts(
         texts=[result],
         metadatas=[
             {
@@ -82,16 +88,38 @@ def compare_evaluate(
     return result
 
 
+def load_texts(dataset_directory: str, unit: str):
+    answer_key_path = os.path.join(dataset_directory, f"{unit}_answer_key.txt")
+    student_answer_path = os.path.join(dataset_directory, f"{unit}_student_answer.txt")
+
+    with open(answer_key_path, "r", encoding="utf-8") as f:
+        answer_key = f.read()
+
+    with open(student_answer_path, "r", encoding="utf-8") as f:
+        student_answer = f.read()
+
+    return answer_key, student_answer
+
+
 if __name__ == "__main__":
-    from signup import get_or_create_user_chromadb
+    from get_chroma import get_or_create_user_chromadb
+
+    env = initialize_environment()
+    dataset_dir = env["dataset_directory"]
 
     user_id = "user123"
     subject = "지구과학"
     unit = "판구조론 정립 과정"
 
-    vectorstore = get_or_create_user_chromadb(user_id=user_id)
+    vectordb = get_or_create_user_chromadb(user_id=user_id)
+    answer_key, student_answer = load_texts(dataset_dir, unit)
 
-    answer_key_path = dataset_directory + "/" + unit + "_answer_key.txt"
-    student_answer_path = dataset_directory + "/" + unit + "_student_answer.txt"
+    feedback = get_evaluate_result(
+        vectorstore=vectordb,
+        answer_key_text=answer_key,
+        student_answer_text=student_answer,
+        subject=subject,
+        unit=unit,
+    )
 
-    compare_evaluate(vectorstore, answer_key_path, student_answer_path, subject, unit)
+    print(feedback)

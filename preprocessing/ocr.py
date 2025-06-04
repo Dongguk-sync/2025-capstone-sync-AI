@@ -1,11 +1,14 @@
+import os
+from dotenv import load_dotenv
 from pdf2image import convert_from_path
 import pytesseract
+from fastapi import APIRouter, UploadFile, File
+from services.ocr_service import process_pdf
 
-import os
-
-from dotenv import load_dotenv
-
+router = APIRouter()
 load_dotenv()
+
+poppler_path = os.getenv("POPPLER_PATH")
 
 
 def ocr_from_pdf(pdf_path, dpi=300, lang="kor+eng") -> None:
@@ -14,7 +17,7 @@ def ocr_from_pdf(pdf_path, dpi=300, lang="kor+eng") -> None:
     output_path = f"{base_name}.txt"
 
     images = convert_from_path(
-        pdf_path, dpi=dpi, poppler_path="/opt/homebrew/bin"  # poppler가 설치된 경로
+        pdf_path, dpi=dpi, poppler_path=poppler_path  # poppler가 설치된 경로
     )
 
     all_text = ""
@@ -24,8 +27,6 @@ def ocr_from_pdf(pdf_path, dpi=300, lang="kor+eng") -> None:
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(all_text)
-
-    print(f"✅ PDF 내용을 '{output_path}' 파일로 저장했습니다.")
 
 
 if __name__ == "__main__":

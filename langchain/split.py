@@ -16,7 +16,7 @@ from langchain_openai import OpenAIEmbeddings
 import re
 import os
 
-from signup import get_or_create_user_chromadb
+from get_chroma import get_or_create_user_chromadb
 
 import os
 from dotenv import load_dotenv
