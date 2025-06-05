@@ -17,9 +17,7 @@ import json
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
-
 
 from preprocessing.split import split_student_answer
 
@@ -43,31 +41,37 @@ class ClovaSpeechClient:
             "Accept": "application/json;UTF-8",
             "X-CLOVASPEECH-API-KEY": self.secret,
         }
-        files = {
-            "media": open(file, "rb"),
-            "params": (
-                None,
-                json.dumps(request_body, ensure_ascii=False).encode("UTF-8"),
-                "application/json",
-            ),
-        }
-        response = requests.post(
-            url=self.invoke_url + "/recognizer/upload", headers=headers, files=files
-        )
-        return response.text
+        with open(file, "rb") as f:
+            files = {
+                "media": f,
+                "params": (
+                    None,
+                    json.dumps(request_body, ensure_ascii=False).encode("UTF-8"),
+                    "application/json",
+                ),
+            }
+            response = requests.post(
+                url=self.invoke_url + "/recognizer/upload", headers=headers, files=files
+            )
+            return response.text
 
 
 async def correct_typo(text: str) -> str:
-    template = """- Fix typos
-    - The content is an answer to a test and should not be added to or deleted.
-    - Write in Korean
+    template = """The following is a student's test answer.
 
-    <content>:
-    {content}
-    """
+Please:
+- Fix typos only.
+- Do not add, remove, or rephrase content.
+- Output in Korean only.
+
+<Student answer>:
+{content}
+
+<Corrected answer>:
+"""
     prompt = ChatPromptTemplate.from_template(template)
     model = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
-    rag_chain = RunnablePassthrough() | prompt | model | StrOutputParser()
+    rag_chain = prompt | model | StrOutputParser()
     return await rag_chain.ainvoke({"content": text})
 
 
@@ -83,27 +87,26 @@ async def voice_to_text(
         stt_result_json = clova_client.req_upload(audio_file_path, completion="sync")
         stt_text = json.loads(stt_result_json)["text"]
     except Exception as e:
-        raise RuntimeError(f"STT 실패: {e}")
+        raise RuntimeError(f"STT failed: {e}")
 
     if not stt_text.strip():
-        raise ValueError("STT 결과가 비어 있습니다.")
+        raise ValueError("STT returned empty result.")
 
     # 2. 맞춤법 교정
     try:
         corrected_text = await correct_typo(stt_text)
     except Exception as e:
-        raise RuntimeError(f"맞춤법 교정 실패: {e}")
+        raise RuntimeError(f"Correcting typo failed: {e}")
 
     if not corrected_text.strip():
-        raise ValueError("맞춤법 교정 결과가 비어 있습니다.")
+        raise ValueError("Correcting typo returned empty result.")
 
     # 3. 벡터 분할 및 Chroma DB 저장
     try:
         split_student_answer(vectorstore, subject, unit, corrected_text)
     except Exception as e:
-        raise RuntimeError(f"Chroma 저장 실패: {e}")
+        raise RuntimeError(f"Store in Chroma DB failed: {e}")
 
-    # 4. 결과 반환
     return corrected_text
 
 
@@ -131,7 +134,7 @@ async def preprocess_voice(
     # 1. 음성 파일 존재 확인
     if not os.path.exists(req.audio_file_path):
         raise HTTPException(
-            status_code=400, detail=f"파일이 존재하지 않습니다: {req.audio_file_path}"
+            status_code=400, detail=f"Voice file doesn't exist: {req.audio_file_path}"
         )
 
     # 2. 음성 복습 전처리 (STT, 오타 정정, 벡터 분할 및 DB 저장)
@@ -145,8 +148,12 @@ async def preprocess_voice(
             clova_client=clova_client,
         )
         if not correct_text.strip():
-            raise HTTPException(status_code=422, detail="STT 결과가 비어 있습니다.")
-        return JSONResponse(content={"student_anser": correct_text})
+            raise HTTPException(status_code=422, detail="STT returned empty result.")
+        return JSONResponse(content={"student_answer": correct_text})
 
+    except ValueError as ve:
+        raise HTTPException(status_code=422, detail=str(ve))
+    except RuntimeError as re:
+        raise HTTPException(status_code=500, detail=str(re))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Voice preprocessing failed: {e}")

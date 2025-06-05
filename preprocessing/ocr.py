@@ -8,7 +8,6 @@ import os
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
-from dotenv import load_dotenv
 from langchain_chroma import Chroma
 from pdf2image import convert_from_path
 from pydantic import BaseModel
@@ -16,7 +15,6 @@ import pytesseract
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
 from preprocessing.split import split_answer_key
@@ -43,18 +41,23 @@ class Ocr:
         return all_text
 
 
-async def markdown_formatting(text) -> str:
-    template = """- Convert the given content to markdown format in korean
-    - The given text is from a textbook. Extract only the concepts, not the exercises in the textbook.
-    - Use # for the entire article, ## the medium topic, and ### for the small topic.
-    - The article is an answer key to a test and should not be added to or deleted.
+async def markdown_formatting(text: str) -> str:
+    template = """The following is a textbook content.
 
-    <content>:
-    {content}
-    """
+Please:
+- Convert the content to markdown format in Korean.
+- Extract **only the conceptual explanations** (not exercises, questions, or examples).
+- Use '#' for the main title, '##' for section titles, and '###' for subsections.
+- This is an answer key. Do not add, remove, or modify the content.
+
+<content>:
+{content}
+
+<markdown>:
+"""
     prompt = ChatPromptTemplate.from_template(template)
     model = ChatOpenAI(model="gpt-4.1-nano-2025-04-14", temperature=0)
-    rag_chain = RunnablePassthrough() | prompt | model | StrOutputParser()
+    rag_chain = prompt | model | StrOutputParser()
     result = await rag_chain.ainvoke({"content": text})
     return result
 
@@ -68,10 +71,16 @@ async def pdf_to_text(
     url: Optional[str] = None,
 ) -> str:
     # 1. OCR
-    raw_text = ocr.ocr_from_pdf(pdf_path)
+    try:
+        raw_text = ocr.ocr_from_pdf(pdf_path)
+    except Exception as e:
+        raise RuntimeError(f"OCR failed: {e}")
 
     # 2. 마크다운 변환
-    markdown_text = await markdown_formatting(raw_text)
+    try:
+        markdown_text = await markdown_formatting(raw_text)
+    except Exception as e:
+        raise RuntimeError(f"Markdown formatting failed: {e}")
 
     # 3. 벡터 분할 및 Chroma DB 저장
     try:
@@ -83,7 +92,7 @@ async def pdf_to_text(
             vectorstore=vectorstore,
         )
     except Exception as e:
-        raise RuntimeError(f"Chroma 저장 실패: {e}")
+        raise RuntimeError(f"Store in Chroma DB failed: {e}")
 
     return markdown_text
 
@@ -93,7 +102,7 @@ class PreprocessPdfRequest(BaseModel):
     subject: str
     unit: str
     pdf_path: str
-    url: str
+    url: Optional[str] = None
 
 
 def get_chroma_db(req: PreprocessPdfRequest = Depends()) -> Chroma:
@@ -114,7 +123,7 @@ async def preprocess_pdf(
     if not os.path.exists(req.pdf_path):
         raise HTTPException(
             status_code=404,
-            detail=f"PDF 파일이 존재하지 않습니다: {req.pdf_path}",
+            detail=f"PDF file doesn't exist: {req.pdf_path}",
         )
 
     # 2. PDF 교안 전처리 (OCR, 마크다운 형식, 벡터 분할 및 DB 저장)
@@ -129,8 +138,12 @@ async def preprocess_pdf(
             ocr=ocr,
         )
         if not markdown_text.strip():
-            raise HTTPException(status_code=422, detail="OCR 결과가 비어 있습니다.")
+            raise HTTPException(status_code=422, detail="OCR returned empty result.")
         return JSONResponse(content={"answer_key": markdown_text})
 
+    except ValueError as ve:
+        raise HTTPException(status_code=422, detail=str(ve))
+    except RuntimeError as re:
+        raise HTTPException(status_code=500, detail=str(re))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"PDF 전처리 실패: {e}")
+        raise HTTPException(status_code=500, detail=f"PDF preprocessing failed: {e}")
