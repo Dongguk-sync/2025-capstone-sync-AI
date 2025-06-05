@@ -12,8 +12,7 @@ from langchain_teddynote import logging
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
-logging.langsmith(project_name=os.getenv("LANGSMITH_PROJECT"))
+logging.langsmith(project_name="Beakji-evaluate")
 
 router = APIRouter()
 

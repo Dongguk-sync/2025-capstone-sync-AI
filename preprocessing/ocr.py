@@ -1,5 +1,6 @@
 """
 교안 PDF 전처리
+
 과정 : ocr -> markdown formatting -> chroma DB에 저장
 """
 
@@ -18,9 +19,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
-from preprocessing.split import _store_chunks
+from preprocessing.split import split_answer_key
 
-load_dotenv()
 router = APIRouter()
 
 
@@ -61,28 +61,29 @@ async def markdown_formatting(text) -> str:
 
 async def pdf_to_text(
     pdf_path: str,
-    vectorstore: Chroma,
     subject: str,
     unit: str,
-    doc_type: str = "answer_key",
+    vectorstore: Chroma,
+    ocr: Ocr,
     url: Optional[str] = None,
 ) -> str:
     # 1. OCR
-    ocr = Ocr()
     raw_text = ocr.ocr_from_pdf(pdf_path)
 
     # 2. 마크다운 변환
     markdown_text = await markdown_formatting(raw_text)
 
-    # 3. 벡터스토어 저장
-    _store_chunks(
-        vectorstore=vectorstore,
-        chunks=[markdown_text],  # 현재는 한 개의 큰 청크로 저장
-        subject=subject,
-        unit=unit,
-        doc_type=doc_type,
-        url=url,
-    )
+    # 3. 벡터 분할 및 Chroma DB 저장
+    try:
+        split_answer_key(
+            text=markdown_text,
+            subject=subject,
+            unit=unit,
+            url=url,
+            vectorstore=vectorstore,
+        )
+    except Exception as e:
+        raise RuntimeError(f"Chroma 저장 실패: {e}")
 
     return markdown_text
 
@@ -92,37 +93,44 @@ class PreprocessPdfRequest(BaseModel):
     subject: str
     unit: str
     pdf_path: str
+    url: str
 
 
 def get_chroma_db(req: PreprocessPdfRequest = Depends()) -> Chroma:
     return get_or_create_user_chromadb(user_id=req.user_id)
 
 
+def get_ocr(req: PreprocessPdfRequest = Depends()) -> Ocr:
+    return Ocr()
+
+
 @router.post("/preprocess_pdf")
 async def preprocess_pdf(
     req: PreprocessPdfRequest,
     vectorstore: Chroma = Depends(get_chroma_db),
-):
-    # 파일 존재 확인
+    ocr: Ocr = Depends(get_ocr),
+) -> JSONResponse:
+    # 1. PDF 파일 존재 확인
     if not os.path.exists(req.pdf_path):
         raise HTTPException(
             status_code=404,
             detail=f"PDF 파일이 존재하지 않습니다: {req.pdf_path}",
         )
 
+    # 2. PDF 교안 전처리 (OCR, 마크다운 형식, 벡터 분할 및 DB 저장)
+    # return: 마크다운 형식 정답
     try:
         markdown_text = await pdf_to_text(
             pdf_path=req.pdf_path,
-            vectorstore=vectorstore,
             subject=req.subject,
             unit=req.unit,
-            doc_type="answer_key",
+            url=req.url,
+            vectorstore=vectorstore,
+            ocr=ocr,
         )
-
         if not markdown_text.strip():
             raise HTTPException(status_code=422, detail="OCR 결과가 비어 있습니다.")
-
-        return JSONResponse(content={"markdown": markdown_text})
+        return JSONResponse(content={"answer_key": markdown_text})
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PDF 전처리 실패: {e}")

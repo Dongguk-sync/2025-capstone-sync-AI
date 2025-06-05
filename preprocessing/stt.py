@@ -1,19 +1,19 @@
 """
 학생의 복습 음성 전처리
 
+과정:
 1. STT 수행 (Clova Speech API)
 2. 맞춤법 교정 (LLM)
 3. 결과 저장 및 반환
 """
 
 import os
-from fastapi import Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from langchain_chroma import Chroma
 from pydantic import BaseModel
 import requests
 import json
-from dotenv import load_dotenv
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -23,7 +23,6 @@ from langchain_core.output_parsers import StrOutputParser
 
 from preprocessing.split import split_student_answer
 
-load_dotenv()
 router = APIRouter()
 
 
@@ -72,6 +71,42 @@ async def correct_typo(text: str) -> str:
     return await rag_chain.ainvoke({"content": text})
 
 
+async def voice_to_text(
+    audio_file_path: str,
+    subject: str,
+    unit: str,
+    vectorstore: Chroma,
+    clova_client: ClovaSpeechClient,
+) -> str:
+    # 1. STT
+    try:
+        stt_result_json = clova_client.req_upload(audio_file_path, completion="sync")
+        stt_text = json.loads(stt_result_json)["text"]
+    except Exception as e:
+        raise RuntimeError(f"STT 실패: {e}")
+
+    if not stt_text.strip():
+        raise ValueError("STT 결과가 비어 있습니다.")
+
+    # 2. 맞춤법 교정
+    try:
+        corrected_text = await correct_typo(stt_text)
+    except Exception as e:
+        raise RuntimeError(f"맞춤법 교정 실패: {e}")
+
+    if not corrected_text.strip():
+        raise ValueError("맞춤법 교정 결과가 비어 있습니다.")
+
+    # 3. 벡터 분할 및 Chroma DB 저장
+    try:
+        split_student_answer(vectorstore, subject, unit, corrected_text)
+    except Exception as e:
+        raise RuntimeError(f"Chroma 저장 실패: {e}")
+
+    # 4. 결과 반환
+    return corrected_text
+
+
 class PreprocessVoiceRequest(BaseModel):
     user_id: str
     subject: str
@@ -90,35 +125,28 @@ def get_clova(req: PreprocessVoiceRequest = Depends()) -> ClovaSpeechClient:
 @router.post("/preprocess_voice")
 async def preprocess_voice(
     req: PreprocessVoiceRequest,
-    vectorstore=Depends(get_chroma_db),
-    clova_client=Depends(get_clova),
+    vectorstore: Chroma = Depends(get_chroma_db),
+    clova_client: ClovaSpeechClient = Depends(get_clova),
 ) -> JSONResponse:
-    # 1. STT 요청
-    try:
-        stt_result_json = clova_client.req_upload(
-            req.audio_file_path, completion="sync"
+    # 1. 음성 파일 존재 확인
+    if not os.path.exists(req.audio_file_path):
+        raise HTTPException(
+            status_code=400, detail=f"파일이 존재하지 않습니다: {req.audio_file_path}"
         )
-        stt_text = json.loads(stt_result_json)["text"]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"STT 실패: {e}")
 
-    if not stt_text.strip():
-        raise HTTPException(status_code=422, detail="STT 결과가 비어 있습니다.")
-
-    # 2. 맞춤법 교정
+    # 2. 음성 복습 전처리 (STT, 오타 정정, 벡터 분할 및 DB 저장)
+    # return: 오타 정정 학생 답안
     try:
-        corrected_text = await correct_typo(stt_text)
+        correct_text = await voice_to_text(
+            audio_file_path=req.audio_file_path,
+            subject=req.subject,
+            unit=req.unit,
+            vectorstore=vectorstore,
+            clova_client=clova_client,
+        )
+        if not correct_text.strip():
+            raise HTTPException(status_code=422, detail="STT 결과가 비어 있습니다.")
+        return JSONResponse(content={"student_anser": correct_text})
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"맞춤법 교정 실패: {e}")
-
-    if not corrected_text.strip():
-        raise HTTPException(status_code=422, detail="교정된 텍스트가 비어 있습니다.")
-
-    # 3. 청크 분할 및 저장
-    try:
-        split_student_answer(vectorstore, req.subject, req.unit, corrected_text)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Chroma 저장 실패: {e}")
-
-    # 4. 결과 반환
-    return JSONResponse(content={"corrected_text": corrected_text})
+        raise HTTPException(status_code=500, detail=str(e))
