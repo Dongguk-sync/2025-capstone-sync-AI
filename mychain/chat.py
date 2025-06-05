@@ -112,15 +112,15 @@ router = APIRouter()
 
 @router.post("/chat")
 def chat(
-    chat_request: ChatRequest = Body(...),
+    req: ChatRequest = Body(...),
     retrievers=Depends(
         lambda chat_request=Body(...): get_vectorstores(chat_request.user_id)
     ),
 ):
     answer_key_retriever, feedback_retriever = retrievers
     result = get_chat_response(
-        chat_request.question,
-        chat_request.session_id,
+        req.question,
+        req.session_id,
         answer_key_retriever,
         feedback_retriever,
     )
