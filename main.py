@@ -10,8 +10,8 @@ answer_key, student_answer -> compare_evaluate -> ChromaDB 저장 (Feedback)
 """
 
 from fastapi import FastAPI
-from .preprocessing import ocr, stt
-from .langchain import chat, evaluate
+from preprocessing import ocr, stt
+from langchain import chat, evaluate
 from dotenv import load_dotenv
 
 load_dotenv()
