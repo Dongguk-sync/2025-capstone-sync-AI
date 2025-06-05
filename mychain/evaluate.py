@@ -5,12 +5,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
-from get_chroma import get_or_create_user_chromadb
+from utils.get_chroma import get_or_create_user_chromadb
 from langchain_teddynote import logging
-
-# 환경 설정
-import os
-from dotenv import load_dotenv
 
 logging.langsmith(project_name="Beakji-evaluate")
 

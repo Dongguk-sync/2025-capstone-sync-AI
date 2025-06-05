@@ -15,7 +15,7 @@ from langchain_community.chat_message_histories import ChatMessageHistory
 
 # 기타 외부 모듈
 from langchain_teddynote import logging
-from get_chroma import get_or_create_user_chromadb
+from utils.get_chroma import get_or_create_user_chromadb
 
 from fastapi import FastAPI, APIRouter, Depends, Request, Body
 from pydantic import BaseModel

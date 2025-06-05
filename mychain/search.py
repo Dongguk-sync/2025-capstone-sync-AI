@@ -1,4 +1,4 @@
-import langchain
+import mychain
 import os
 
 from dotenv import load_dotenv
