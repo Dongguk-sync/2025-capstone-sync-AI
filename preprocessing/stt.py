@@ -20,7 +20,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
 from utils.get_chroma import get_or_create_user_chromadb
-from preprocessing.split import split_student_answer
+from preprocessing.split_and_store import split_student_answer
 
 router = APIRouter()
 
