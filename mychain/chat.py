@@ -16,14 +16,13 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_teddynote import logging
 from utils.get_chroma import get_or_create_user_chromadb
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 router = APIRouter()
 logging.langsmith("Beakji-chat")
 
 
-# ---------------- 프롬프트 -------------------
 def get_chat_prompt():
     return PromptTemplate.from_template(
         """You are an assistant for question-answering tasks.
@@ -53,7 +52,6 @@ If you don't know the answer, set both fields to null.
     )
 
 
-# ---------------- 체인 구성 -------------------
 def build_rag_chain(answer_key_retriever, feedback_retriever):
     return (
         {
@@ -68,21 +66,28 @@ def build_rag_chain(answer_key_retriever, feedback_retriever):
 
 
 async def get_chat_response(
-    question: str, chat_history: list, answer_key_retriever, feedback_retriever
+    question: str,
+    chat_history: list,
+    history_id: str,
+    answer_key_retriever,
+    feedback_retriever,
 ):
-    rag_chain = build_rag_chain(answer_key_retriever, feedback_retriever)
-    rag_with_history = RunnableWithMessageHistory(
-        rag_chain,
-        lambda _: chat_history,
-        input_messages_key="question",
-        history_messages_key="chat_history",
-    )
-    return await rag_with_history.ainvoke(
-        {"question": question}, config={"configurable": {"session_id": "static"}}
-    )
+    try:
+        rag_chain = build_rag_chain(answer_key_retriever, feedback_retriever)
+        rag_with_history = RunnableWithMessageHistory(
+            rag_chain,
+            lambda _: chat_history,
+            input_messages_key="question",
+            history_messages_key="chat_history",
+        )
+        return await rag_with_history.ainvoke(
+            {"question": question}, config={"configurable": {"history_id": history_id}}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Chat response failed: {e}")
 
 
-# ---------------- 요청 모델 -------------------
+# 요청 모델
 class ChatMessage(BaseModel):
     message_type: str  # "user" or "AI"
     message_content: str
@@ -91,35 +96,56 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     question: str
     user_id: int
+    history_id: str
     chat_history: list[ChatMessage]
 
 
-# ---------------- 벡터스토어 로딩 -------------------
 def get_vectorstores(user_id: int):
-    vectordb = get_or_create_user_chromadb(user_id=user_id)
-    answer_key_retriever = vectordb.as_retriever(
-        search_kwargs={"filter": {"type": "answer_key"}}
-    )
-    feedback_retriever = vectordb.as_retriever(
-        search_kwargs={"filter": {"type": "feedback"}}
-    )
-    return answer_key_retriever, feedback_retriever
+    try:
+        vectordb = get_or_create_user_chromadb(user_id=user_id)
+        answer_key_retriever = vectordb.as_retriever(
+            search_kwargs={"filter": {"type": "answer_key"}}
+        )
+        feedback_retriever = vectordb.as_retriever(
+            search_kwargs={"filter": {"type": "feedback"}}
+        )
+        return answer_key_retriever, feedback_retriever
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"VectorStore loading failed: {e}")
 
 
-# ---------------- API 라우터 -------------------
 @router.post("/chat")
 async def chat(req: ChatRequest) -> JSONResponse:
-    answer_key_retriever, feedback_retriever = get_vectorstores(req.user_id)
+    try:
+        answer_key_retriever, feedback_retriever = get_vectorstores(req.user_id)
+        history = []
 
-    # chat_history 변환
-    history = []
-    for msg in req.chat_history:
-        if msg.message_type == "user":
-            history.append(HumanMessage(content=msg.message_content))
-        elif msg.message_type == "AI":
-            history.append(AIMessage(content=msg.message_content))
+        for msg in req.chat_history:
+            if msg.message_type == "user":
+                history.append(HumanMessage(content=msg.message_content))
+            elif msg.message_type == "AI":
+                history.append(AIMessage(content=msg.message_content))
+            else:
+                raise HTTPException(
+                    status_code=400, detail=f"Invalid message_type: {msg.message_type}"
+                )
 
-    result = await get_chat_response(
-        req.question, history, answer_key_retriever, feedback_retriever
-    )
-    return {result}
+        result = await get_chat_response(
+            req.question,
+            history,
+            req.history_id,
+            answer_key_retriever,
+            feedback_retriever,
+        )
+
+        if not isinstance(result, dict) or "answer" not in result:
+            raise HTTPException(
+                status_code=500, detail="Invalid response format from LLM."
+            )
+
+        return JSONResponse(content=result)
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
