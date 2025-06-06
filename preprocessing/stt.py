@@ -22,6 +22,12 @@ from langchain_core.output_parsers import StrOutputParser
 from utils.get_chroma import get_or_create_user_chromadb
 from preprocessing.split_and_store import split_student_answer
 
+from config import (
+    OPENAI_MODEL,
+    OPENAI_TEMPERATURE,
+    OPENAI_STREAMING,
+)
+
 router = APIRouter()
 
 
@@ -71,7 +77,11 @@ Please:
 <Corrected answer>:
 """
     prompt = ChatPromptTemplate.from_template(template)
-    model = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
+    model = ChatOpenAI(
+        model_name=OPENAI_MODEL,
+        temperature=OPENAI_TEMPERATURE,
+        streaming=OPENAI_STREAMING,
+    )
     rag_chain = prompt | model | StrOutputParser()
     return await rag_chain.ainvoke({"content": text})
 

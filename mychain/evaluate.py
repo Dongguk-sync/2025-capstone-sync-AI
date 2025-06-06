@@ -8,6 +8,12 @@ from langchain_core.output_parsers import StrOutputParser
 from utils.get_chroma import get_or_create_user_chromadb
 from langchain_teddynote import logging
 
+from config import (
+    OPENAI_MODEL,
+    OPENAI_TEMPERATURE,
+    OPENAI_STREAMING,
+)
+
 logging.langsmith(project_name="Beakji-evaluate")
 
 router = APIRouter()
@@ -59,7 +65,11 @@ async def get_evaluation_result_async(
     subject: str,
     unit: str,
 ) -> str:
-    model = ChatOpenAI(model="gpt-4-turbo-2024-04-09", temperature=0)
+    model = ChatOpenAI(
+        model_name=OPENAI_MODEL,
+        temperature=OPENAI_TEMPERATURE,
+        streaming=OPENAI_STREAMING,
+    )
 
     rag_chain = (
         RunnablePassthrough() | get_evaluation_prompt() | model | StrOutputParser()

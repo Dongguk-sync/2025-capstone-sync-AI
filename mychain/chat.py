@@ -6,6 +6,9 @@
 import json
 from operator import itemgetter
 
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
 # langchain 관련 묶음
 from fastapi.responses import JSONResponse
 from langchain_openai import ChatOpenAI
@@ -18,8 +21,11 @@ from langchain.memory.chat_message_histories import ChatMessageHistory
 from langchain_teddynote import logging
 from utils.get_chroma import get_or_create_user_chromadb
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from config import (
+    OPENAI_MODEL,
+    OPENAI_TEMPERATURE,
+    OPENAI_STREAMING,
+)
 
 router = APIRouter()
 logging.langsmith("Beakji-chat")
@@ -64,7 +70,11 @@ def build_rag_chain(answer_key_retriever, feedback_retriever):
             "feedback": itemgetter("question") | feedback_retriever,
         }
         | get_chat_prompt()
-        | ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0, streaming=False)
+        | ChatOpenAI(
+            model_name=OPENAI_MODEL,
+            temperature=OPENAI_TEMPERATURE,
+            streaming=OPENAI_STREAMING,
+        )
     )
 
 
