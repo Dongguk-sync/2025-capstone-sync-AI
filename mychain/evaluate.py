@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -57,8 +58,8 @@ def get_evaluation_prompt():
     )
 
 
-# 평가 로직 (async)
-async def get_evaluation_result_async(
+# 평가 로직
+async def get_evaluation_result(
     vectorstore,
     answer_key_text: str,
     student_answer_text: str,
@@ -98,12 +99,22 @@ async def get_evaluation_result_async(
 async def evaluate(
     req: EvaluationRequest,
     vectorstore=Depends(get_chroma_db),
-):
-    feedback = await get_evaluation_result_async(
-        vectorstore=vectorstore,
-        answer_key_text=req.answer_key_text,
-        student_answer_text=req.student_answer_text,
-        subject=req.subject,
-        unit=req.unit,
-    )
-    return {"feedback": feedback}
+) -> JSONResponse:
+    try:
+        feedback = await get_evaluation_result(
+            vectorstore=vectorstore,
+            answer_key_text=req.answer_key_text,
+            student_answer_text=req.student_answer_text,
+            subject=req.subject,
+            unit=req.unit,
+        )
+        return {
+            "success": True,
+            "data": {
+                "subject": req.subject,
+                "unit": req.unit,
+                "feedback": feedback,
+            },
+        }
+    except Exception as e:
+        return {"success": False}

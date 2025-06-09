@@ -97,7 +97,7 @@ async def get_chat_response(
 
         result = await rag_with_history.ainvoke(
             {"question": question},
-            config={"configurable": {"session_id": history_id}},  # ✅ 반드시 session_id
+            config={"configurable": {"session_id": history_id}},
         )
 
         # LLM이 BaseMessage 객체로 반환되었을 경우 content 추출

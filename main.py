@@ -15,7 +15,7 @@ from mychain import chat, evaluate
 
 app = FastAPI()
 
-app.include_router(ocr.router, prefix="/ocr")
-app.include_router(stt.router, prefix="/stt")
-app.include_router(chat.router, prefix="/chat")
-app.include_router(evaluate.router, prefix="/evaluate")
+app.include_router(ocr.router)
+app.include_router(stt.router)
+app.include_router(chat.router)
+app.include_router(evaluate.router)
