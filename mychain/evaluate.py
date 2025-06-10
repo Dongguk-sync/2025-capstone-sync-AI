@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -7,7 +9,7 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
 from utils.get_chroma import get_or_create_user_chromadb
-from langchain_teddynote import logging
+from langchain_teddynote import logging as langchain_logging
 
 from config import (
     OPENAI_MODEL,
@@ -15,7 +17,8 @@ from config import (
     OPENAI_STREAMING,
 )
 
-logging.langsmith(project_name="Beakji-evaluate")
+logger = logging.getLogger(__name__)
+langchain_logging.langsmith(project_name="Beakji-evaluate")
 
 router = APIRouter()
 
@@ -98,9 +101,9 @@ async def get_evaluation_result(
 @router.post("/evaluate")
 async def evaluate(
     req: EvaluationRequest,
-    vectorstore=Depends(get_chroma_db),
 ) -> JSONResponse:
     try:
+        vectorstore = get_or_create_user_chromadb(req.user_id)
         feedback = await get_evaluation_result(
             vectorstore=vectorstore,
             answer_key_text=req.answer_key_text,
@@ -108,13 +111,22 @@ async def evaluate(
             subject=req.subject,
             unit=req.unit,
         )
-        return {
-            "success": True,
-            "data": {
-                "subject": req.subject,
-                "unit": req.unit,
-                "feedback": feedback,
-            },
-        }
+        return JSONResponse(
+            content={
+                "success": True,
+                "content": {
+                    "subject": req.subject,
+                    "unit": req.unit,
+                    "feedback": feedback,
+                },
+            }
+        )
     except Exception as e:
-        return {"success": False}
+        logger.exception(f"Evaluation failed: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": "Internal server error",
+            },
+        )

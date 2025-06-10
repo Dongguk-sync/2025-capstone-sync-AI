@@ -4,14 +4,11 @@
 과정 : ocr -> markdown formatting -> chroma DB에 저장
 """
 
-import os
+import logging
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
-from langchain_chroma import Chroma
-from pdf2image import convert_from_path
 from pydantic import BaseModel
-import pytesseract
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -26,26 +23,9 @@ from config import (
     OPENAI_STREAMING,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
-
-
-class Ocr:
-    def __init__(self):
-        self.poppler_path = os.getenv("POPPLER_PATH")
-
-    def ocr_from_pdf(self, pdf_path, dpi=300, lang="kor+eng") -> str:
-        try:
-            images = convert_from_path(
-                pdf_path, dpi=dpi, poppler_path=self.poppler_path
-            )
-        except Exception as e:
-            raise RuntimeError(f"PDF 변환 실패: {e}")
-
-        all_text = ""
-        for image in images:
-            text = pytesseract.image_to_string(image, lang=lang)
-            all_text += f"\n{text}"
-        return all_text
 
 
 async def markdown_formatting(text: str) -> str:
@@ -73,88 +53,43 @@ Please:
     return result
 
 
-async def pdf_to_text(
-    pdf_path: str,
-    subject: str,
-    unit: str,
-    vectorstore: Chroma,
-    ocr: Ocr,
-    url: Optional[str] = None,
-) -> str:
-    # 1. OCR
-    try:
-        raw_text = ocr.ocr_from_pdf(pdf_path)
-    except Exception as e:
-        raise RuntimeError(f"OCR failed: {e}")
-
-    # 2. 마크다운 변환
-    try:
-        markdown_text = await markdown_formatting(raw_text)
-    except Exception as e:
-        raise RuntimeError(f"Markdown formatting failed: {e}")
-
-    # 3. 벡터 분할 및 Chroma DB 저장
-    try:
-        split_answer_key(
-            text=markdown_text,
-            subject=subject,
-            unit=unit,
-            url=url,
-            vectorstore=vectorstore,
-        )
-    except Exception as e:
-        raise RuntimeError(f"Store in Chroma DB failed: {e}")
-
-    return markdown_text
-
-
-class PreprocessPdfRequest(BaseModel):
+class TextPreprocessRequest(BaseModel):
     user_id: str
     subject: str
     unit: str
-    pdf_path: str
+    text: str  # raw OCR text
     url: Optional[str] = None
 
 
-def get_chroma_db(req: PreprocessPdfRequest = Depends()) -> Chroma:
-    return get_or_create_user_chromadb(user_id=req.user_id)
-
-
-def get_ocr(req: PreprocessPdfRequest = Depends()) -> Ocr:
-    return Ocr()
-
-
-@router.post("/preprocess_pdf")
-async def preprocess_pdf(
-    req: PreprocessPdfRequest,
-    vectorstore: Chroma = Depends(get_chroma_db),
-    ocr: Ocr = Depends(get_ocr),
-) -> JSONResponse:
-    # 1. PDF 파일 존재 확인
-    if not os.path.exists(req.pdf_path):
-        raise HTTPException(
-            status_code=404,
-            detail=f"PDF file doesn't exist: {req.pdf_path}",
-        )
-
-    # 2. PDF 교안 전처리 (OCR, 마크다운 형식, 벡터 분할 및 DB 저장)
-    # return: 마크다운 형식 정답
+@router.post("/preprocess_answer_key")
+async def preprocess_answer_key(req: TextPreprocessRequest) -> JSONResponse:
     try:
-        markdown_text = await pdf_to_text(
-            pdf_path=req.pdf_path,
+        vectorstore = get_or_create_user_chromadb(user_id=req.user_id)
+        markdown_text = await markdown_formatting(req.text)
+
+        if not markdown_text.strip():
+            raise HTTPException(
+                status_code=422, detail="Formatting returned empty result."
+            )
+
+        # split and store answer_key
+        split_answer_key(
+            vectorstore=vectorstore,
             subject=req.subject,
             unit=req.unit,
+            text=markdown_text,
             url=req.url,
-            vectorstore=vectorstore,
-            ocr=ocr,
         )
-        if not markdown_text.strip():
-            raise HTTPException(status_code=422, detail="OCR returned empty result.")
-        return JSONResponse(content={"answer_key": markdown_text})
 
-    except ValueError as ve:
-        raise HTTPException(status_code=422, detail=str(ve))
-    except RuntimeError as re:
-        raise HTTPException(status_code=500, detail=str(re))
+        return JSONResponse(
+            content={
+                "success": True,
+                "content": markdown_text,
+            }
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"PDF preprocessing failed: {e}")
+        logger.exception("Text preprocessing failed.")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": "Internal server error"},
+        )

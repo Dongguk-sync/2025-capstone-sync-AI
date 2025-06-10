@@ -3,6 +3,7 @@
 => 프롬프팅을 통해 LLM이 데이터를 구분하고, 질문 유형(내용/위치/피드백)에 맞는 응답 생성
 """
 
+import logging
 import json
 from operator import itemgetter
 
@@ -15,10 +16,10 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain.memory.chat_message_histories import ChatMessageHistory
+from langchain_community.chat_message_histories import ChatMessageHistory
 
 # 기타 외부 모듈
-from langchain_teddynote import logging
+from langchain_teddynote import logging as langchain_logging
 from utils.get_chroma import get_or_create_user_chromadb
 
 from config import (
@@ -27,8 +28,11 @@ from config import (
     OPENAI_STREAMING,
 )
 
+
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
-logging.langsmith("Beakji-chat")
+langchain_logging.langsmith("Beakji-chat")
 
 
 def get_chat_prompt():
@@ -184,9 +188,28 @@ async def chat(req: ChatRequest) -> JSONResponse:
                 status_code=500, detail="Invalid response format from LLM."
             )
 
-        return JSONResponse(content=result)
+        return JSONResponse(
+            content={
+                "success": True,
+                "content": result,
+            }
+        )
 
     except HTTPException as he:
-        raise he
+        logger.warning(f"[HTTPException] {he.detail}")
+        return JSONResponse(
+            status_code=he.status_code,
+            content={
+                "success": False,
+                "error": he.detail,
+            },
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+        logger.exception("Unexpected error during chat request.")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": "Internal server error",
+            },
+        )

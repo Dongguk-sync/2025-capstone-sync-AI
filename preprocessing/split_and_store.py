@@ -7,7 +7,6 @@ split 함수:
 
 """
 
-import re
 from typing import List
 from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
