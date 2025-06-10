@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from langchain_openai import ChatOpenAI
@@ -30,11 +30,6 @@ class EvaluationRequest(BaseModel):
     unit: str
     answer_key_text: str
     student_answer_text: str
-
-
-# Chroma 의존성 주입
-def get_chroma_db(req: EvaluationRequest = Depends()):
-    return get_or_create_user_chromadb(user_id=req.user_id)
 
 
 # 프롬프트 템플릿

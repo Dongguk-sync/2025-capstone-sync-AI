@@ -73,7 +73,7 @@ async def prep_answer_key(
     return markdown_text
 
 
-class TextPreprocessRequest(BaseModel):
+class FormatAnswerKeyRequest(BaseModel):
     user_id: str
     subject: str
     unit: str
@@ -81,10 +81,11 @@ class TextPreprocessRequest(BaseModel):
     url: Optional[str] = None
 
 
-@router.post("/preprocess_answer_key")
-async def preprocess_answer_key(req: TextPreprocessRequest) -> JSONResponse:
+@router.post("/answer_key")
+async def format_answer_key(req: FormatAnswerKeyRequest) -> JSONResponse:
     try:
         vectorstore = get_or_create_user_chromadb(user_id=req.user_id)
+
         markdown_text = await prep_answer_key(
             text=req.text,
             subject=req.subject,

@@ -8,12 +8,10 @@
 """
 
 import os
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from langchain_chroma import Chroma
 from pydantic import BaseModel
-import requests
-import json
 import logging
 
 from langchain_openai import ChatOpenAI
@@ -79,15 +77,15 @@ async def prep_student_answer(
     return corrected_text
 
 
-class PreprocessVoiceRequest(BaseModel):
+class FormatAnswerRequest(BaseModel):
     user_id: str
     subject: str
     unit: str
     text: str  # raw STT text
 
 
-@router.post("/preprocess_student_answer")
-async def preprocess_student_answer(req: PreprocessVoiceRequest) -> JSONResponse:
+@router.post("/student_answer")
+async def format_student_answer(req: FormatAnswerRequest) -> JSONResponse:
     try:
         vectorstore = get_or_create_user_chromadb(req.user_id)
         correct_text = await prep_student_answer(
@@ -101,6 +99,16 @@ async def preprocess_student_answer(req: PreprocessVoiceRequest) -> JSONResponse
                 "success": True,
                 "student_answer": correct_text,
             }
+        )
+    except ValueError as ve:
+        logger.warning(f"Validation error: {ve}")
+        return JSONResponse(
+            status_code=422, content={"success": False, "error": str(ve)}
+        )
+    except RuntimeError as re:
+        logger.error(f"Processing error: {re}")
+        return JSONResponse(
+            status_code=500, content={"success": False, "error": str(re)}
         )
     except Exception as e:
         logger.exception("Unexpected error during voice preprocessing.")

@@ -15,8 +15,8 @@ from mychain import chat, evaluate, sign_up
 
 app = FastAPI()
 
-app.include_router(ftt.router)
-app.include_router(stt.router)
+app.include_router(ftt.router, prefix="/preprocess")
+app.include_router(stt.router, prefix="/preprocess")
 app.include_router(chat.router)
 app.include_router(evaluate.router)
 app.include_router(sign_up.router)
