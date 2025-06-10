@@ -57,7 +57,7 @@ Please:
     return await rag_chain.ainvoke({"content": text})
 
 
-async def process_text(
+async def prep_student_answer(
     text: str,
     subject: str,
     unit: str,
@@ -90,7 +90,7 @@ class PreprocessVoiceRequest(BaseModel):
 async def preprocess_student_answer(req: PreprocessVoiceRequest) -> JSONResponse:
     try:
         vectorstore = get_or_create_user_chromadb(req.user_id)
-        correct_text = await process_text(
+        correct_text = await prep_student_answer(
             text=req.text,
             subject=req.subject,
             unit=req.unit,
@@ -99,7 +99,7 @@ async def preprocess_student_answer(req: PreprocessVoiceRequest) -> JSONResponse
         return JSONResponse(
             content={
                 "success": True,
-                "content": correct_text,
+                "student_answer": correct_text,
             }
         )
     except Exception as e:

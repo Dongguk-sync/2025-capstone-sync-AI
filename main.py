@@ -10,12 +10,12 @@ answer_key, student_answer -> compare_evaluate -> ChromaDB 저장 (Feedback)
 """
 
 from fastapi import FastAPI
-from preprocessing import ocr, stt
+from preprocessing import ftt, stt
 from mychain import chat, evaluate, sign_up
 
 app = FastAPI()
 
-app.include_router(ocr.router)
+app.include_router(ftt.router)
 app.include_router(stt.router)
 app.include_router(chat.router)
 app.include_router(evaluate.router)

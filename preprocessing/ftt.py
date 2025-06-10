@@ -53,6 +53,26 @@ Please:
     return result
 
 
+async def prep_answer_key(
+    text: str,
+    subject: str,
+    unit: str,
+    vectorstore,
+    url: Optional[str] = None,
+) -> str:
+    markdown_text = await markdown_formatting(text)
+    if not markdown_text.strip():
+        raise ValueError("Formatting returned empty result.")
+    split_answer_key(
+        vectorstore=vectorstore,
+        subject=subject,
+        unit=unit,
+        text=markdown_text,
+        url=url if url else None,
+    )
+    return markdown_text
+
+
 class TextPreprocessRequest(BaseModel):
     user_id: str
     subject: str
@@ -65,28 +85,23 @@ class TextPreprocessRequest(BaseModel):
 async def preprocess_answer_key(req: TextPreprocessRequest) -> JSONResponse:
     try:
         vectorstore = get_or_create_user_chromadb(user_id=req.user_id)
-        markdown_text = await markdown_formatting(req.text)
-
-        if not markdown_text.strip():
-            raise HTTPException(
-                status_code=422, detail="Formatting returned empty result."
-            )
-
-        # split and store answer_key
-        split_answer_key(
-            vectorstore=vectorstore,
+        markdown_text = await prep_answer_key(
+            text=req.text,
             subject=req.subject,
             unit=req.unit,
-            text=markdown_text,
+            vectorstore=vectorstore,
             url=req.url,
         )
 
         return JSONResponse(
             content={
                 "success": True,
-                "content": markdown_text,
+                "answer_key": markdown_text,
             }
         )
+    except ValueError as ve:
+        logger.warning(f"Text preprocessing validation failed: {ve}")
+        raise HTTPException(status_code=422, detail=str(ve))
     except Exception as e:
         logger.exception("Text preprocessing failed.")
         return JSONResponse(

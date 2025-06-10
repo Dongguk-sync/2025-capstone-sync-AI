@@ -191,7 +191,7 @@ async def chat(req: ChatRequest) -> JSONResponse:
         return JSONResponse(
             content={
                 "success": True,
-                "content": result,
+                "response": result,
             }
         )
 
