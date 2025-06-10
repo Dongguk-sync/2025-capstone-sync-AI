@@ -142,7 +142,7 @@ class ChatRequest(BaseModel):
     chat_history: list[ChatMessage]
 
 
-def get_vectorstores(user_id: str):
+def get_retrievers(user_id: str):
     try:
         vectordb = get_or_create_user_chromadb(user_id=user_id)
         answer_key_retriever = vectordb.as_retriever(
@@ -159,7 +159,7 @@ def get_vectorstores(user_id: str):
 @router.post("/chat")
 async def chat(req: ChatRequest) -> JSONResponse:
     try:
-        answer_key_retriever, feedback_retriever = get_vectorstores(req.user_id)
+        answer_key_retriever, feedback_retriever = get_retrievers(req.user_id)
 
         # ChatMessageHistory 객체 생성
         history_obj = ChatMessageHistory()
