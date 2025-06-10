@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends
+import logging
+
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -6,7 +9,7 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
 from utils.get_chroma import get_or_create_user_chromadb
-from langchain_teddynote import logging
+from langchain_teddynote import logging as langchain_logging
 
 from config import (
     OPENAI_MODEL,
@@ -14,7 +17,8 @@ from config import (
     OPENAI_STREAMING,
 )
 
-logging.langsmith(project_name="Beakji-evaluate")
+logger = logging.getLogger(__name__)
+langchain_logging.langsmith(project_name="Beakji-evaluate")
 
 router = APIRouter()
 
@@ -26,11 +30,6 @@ class EvaluationRequest(BaseModel):
     unit: str
     answer_key_text: str
     student_answer_text: str
-
-
-# Chroma 의존성 주입
-def get_chroma_db(req: EvaluationRequest = Depends()):
-    return get_or_create_user_chromadb(user_id=req.user_id)
 
 
 # 프롬프트 템플릿
@@ -57,8 +56,8 @@ def get_evaluation_prompt():
     )
 
 
-# 평가 로직 (async)
-async def get_evaluation_result_async(
+# 평가 로직
+async def get_evaluation_result(
     vectorstore,
     answer_key_text: str,
     student_answer_text: str,
@@ -97,13 +96,32 @@ async def get_evaluation_result_async(
 @router.post("/evaluate")
 async def evaluate(
     req: EvaluationRequest,
-    vectorstore=Depends(get_chroma_db),
-):
-    feedback = await get_evaluation_result_async(
-        vectorstore=vectorstore,
-        answer_key_text=req.answer_key_text,
-        student_answer_text=req.student_answer_text,
-        subject=req.subject,
-        unit=req.unit,
-    )
-    return {"feedback": feedback}
+) -> JSONResponse:
+    try:
+        vectorstore = get_or_create_user_chromadb(req.user_id)
+        feedback = await get_evaluation_result(
+            vectorstore=vectorstore,
+            answer_key_text=req.answer_key_text,
+            student_answer_text=req.student_answer_text,
+            subject=req.subject,
+            unit=req.unit,
+        )
+        return JSONResponse(
+            content={
+                "success": True,
+                "content": {
+                    "subject": req.subject,
+                    "unit": req.unit,
+                    "feedback": feedback,
+                },
+            }
+        )
+    except Exception as e:
+        logger.exception(f"Evaluation failed: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": "Internal server error",
+            },
+        )
