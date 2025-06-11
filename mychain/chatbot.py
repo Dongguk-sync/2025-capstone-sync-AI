@@ -163,7 +163,7 @@ def get_retrievers(user_id: str):
         raise HTTPException(status_code=500, detail=f"VectorStore loading failed: {e}")
 
 
-@router.post("/chat")
+@router.post("/chatbot")
 async def chat(req: ChatRequest) -> JSONResponse:
     try:
         answer_key_retriever, feedback_retriever = get_retrievers(req.user_id)
