@@ -106,6 +106,8 @@ async def get_chat_response(
             config={"configurable": {"session_id": history_id}},
         )
 
+        retrieved_docs = await answer_key_retriever.aget_relevant_documents(question)
+
         # LLM이 BaseMessage 객체로 반환되었을 경우 content 추출
         if isinstance(result, BaseMessage):
             result = result.content
@@ -123,6 +125,16 @@ async def get_chat_response(
             raise HTTPException(
                 status_code=500, detail="Invalid response format from LLM."
             )
+
+        subject_name = None
+        file_name = None
+        if retrieved_docs:
+            meta = retrieved_docs[0].metadata
+            subject_name = meta.get("subject")
+            file_name = meta.get("unit")
+
+        result["subject_name"] = subject_name
+        result["file_name"] = file_name
 
         return result
 
@@ -201,8 +213,8 @@ async def chat(req: ChatRequest) -> JSONResponse:
                     "message_type": MessageType.AI,
                     "message_content": result.get("message_content"),
                     "message_created_at": result.get("message_created_at"),
-                    "subject_name": req.subject_name,
-                    "file_name": req.file_name,
+                    "subject_name": result.get("subject_name", req.subject_name),
+                    "file_name": result.get("file_name", req.file_name),
                     "file_url": result.get("file_url"),
                 },
             }
