@@ -1,7 +1,7 @@
 """
 교안 PDF 전처리
 
-과정 : ocr -> markdown formatting -> chroma DB에 저장
+과정 : ftt -> markdown formatting -> chroma DB에 저장
 """
 
 import logging
@@ -75,29 +75,29 @@ async def prep_answer_key(
 
 class FormatAnswerKeyRequest(BaseModel):
     user_id: str
-    subject: str
-    unit: str
-    text: str  # raw OCR text
-    url: Optional[str] = None
+    subject_name: str
+    file_name: str
+    file_content: str  # raw FTT text
+    file_url: Optional[str] = None
 
 
-@router.post("/answer_key")
+@router.post("/ftt")
 async def format_answer_key(req: FormatAnswerKeyRequest) -> JSONResponse:
     try:
         vectorstore = get_or_create_user_chromadb(user_id=req.user_id)
 
         markdown_text = await prep_answer_key(
-            text=req.text,
-            subject=req.subject,
-            unit=req.unit,
+            text=req.file_content,
+            unit=req.file_name,
+            subject=req.subject_name,
+            url=req.file_url,
             vectorstore=vectorstore,
-            url=req.url,
         )
 
         return JSONResponse(
             content={
                 "success": True,
-                "answer_key": markdown_text,
+                "content": markdown_text,
             }
         )
     except ValueError as ve:

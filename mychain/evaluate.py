@@ -26,10 +26,10 @@ router = APIRouter()
 # 요청 모델
 class EvaluationRequest(BaseModel):
     user_id: str
-    subject: str
-    unit: str
-    answer_key_text: str
-    student_answer_text: str
+    subject_name: str
+    file_name: str  # unit
+    file_content: str  # answer_key_text
+    studys_stt_content: str  # student_answer_text
 
 
 # 프롬프트 템플릿
@@ -101,18 +101,18 @@ async def evaluate(
         vectorstore = get_or_create_user_chromadb(req.user_id)
         feedback = await get_evaluation_result(
             vectorstore=vectorstore,
-            answer_key_text=req.answer_key_text,
-            student_answer_text=req.student_answer_text,
-            subject=req.subject,
-            unit=req.unit,
+            answer_key_text=req.file_content,
+            student_answer_text=req.studys_stt_content,
+            subject=req.subject_name,
+            unit=req.file_name,
         )
         return JSONResponse(
             content={
                 "success": True,
                 "content": {
-                    "subject": req.subject,
-                    "unit": req.unit,
-                    "feedback": feedback,
+                    "subject_name": req.subject_name,
+                    "file_name": req.file_name,
+                    "studys_feed_content": feedback,
                 },
             }
         )

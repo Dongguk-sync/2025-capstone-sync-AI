@@ -78,25 +78,25 @@ async def prep_student_answer(
 
 class FormatAnswerRequest(BaseModel):
     user_id: str
-    subject: str
-    unit: str
-    text: str  # raw STT text
+    subject_name: str
+    file_name: str
+    studys_stt_content: str  # raw STT text
 
 
-@router.post("/student_answer")
+@router.post("/stt")
 async def format_student_answer(req: FormatAnswerRequest) -> JSONResponse:
     try:
         vectorstore = get_or_create_user_chromadb(req.user_id)
         correct_text = await prep_student_answer(
-            text=req.text,
-            subject=req.subject,
-            unit=req.unit,
+            text=req.studys_stt_content,
+            subject=req.subject_name,
+            unit=req.file_name,
             vectorstore=vectorstore,
         )
         return JSONResponse(
             content={
                 "success": True,
-                "student_answer": correct_text,
+                "content": correct_text,
             }
         )
     except ValueError as ve:

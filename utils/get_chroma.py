@@ -5,7 +5,7 @@
 """
 
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 import os
 
 
@@ -21,4 +21,13 @@ def get_or_create_user_chromadb(user_id: str):
 
 
 if __name__ == "__main__":
-    get_or_create_user_chromadb(user_id="user123")
+    import chromadb
+
+    get_or_create_user_chromadb(user_id="user123456")
+
+    persist_directory = os.getenv("PERSIST_DIRECTORY")
+    client = chromadb.PersistentClient(path=persist_directory)
+    collections = client.list_collections()
+    print("현재 존재하는 collections:")
+    for col in collections:
+        print("-", col.name)

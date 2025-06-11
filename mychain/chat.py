@@ -9,6 +9,7 @@ from operator import itemgetter
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from enum import Enum
 
 # langchain 관련 묶음
 from fastapi.responses import JSONResponse
@@ -42,8 +43,9 @@ Use the following pieces of retrieved context to answer the question.
 Return only a valid JSON object.
 Return your answer in JSON format with the following structure:
 {{
-  "answer": "<natural language answer>",
-  "url": "<answer key URL if available, otherwise null>"
+  "message_content": "<natural language answer>",
+  "message_created_at": "<response DATETIME>
+  "file_url": "<answer key URL if available, otherwise null>"
 }}
 If the answer key is not relevant, set the url to null.
 If you don't know the answer, set both fields to null.
@@ -117,8 +119,7 @@ async def get_chat_response(
                     status_code=500, detail=f"LLM response is not valid JSON: {e}"
                 )
 
-        # 딕셔너리 아니면 에러
-        if not isinstance(result, dict) or "answer" not in result:
+        if not isinstance(result, dict) or "message_content" not in result:
             raise HTTPException(
                 status_code=500, detail="Invalid response format from LLM."
             )
@@ -129,17 +130,23 @@ async def get_chat_response(
         raise HTTPException(status_code=500, detail=f"Chat response failed: {e}")
 
 
-# 요청 모델
+class MessageType(str, Enum):
+    HUMAN = "HUMAN"
+    AI = "AI"
+
+
 class ChatMessage(BaseModel):
-    message_type: str  # "user" or "AI"
+    message_type: MessageType  # "HUMAN" or "AI"
     message_content: str
 
 
 class ChatRequest(BaseModel):
     question: str
     user_id: str
-    history_id: str
-    chat_history: list[ChatMessage]
+    chat_bot_history_id: str
+    chat_bot_history: list[ChatMessage]
+    subject_name: str
+    file_name: str
 
 
 def get_retrievers(user_id: str):
@@ -163,27 +170,26 @@ async def chat(req: ChatRequest) -> JSONResponse:
 
         # ChatMessageHistory 객체 생성
         history_obj = ChatMessageHistory()
-        for msg in req.chat_history:
-            if msg.message_type == "user":
+        for msg in req.chat_bot_history:
+            if msg.message_type == MessageType.HUMAN:
                 history_obj.add_user_message(msg.message_content)
-            elif msg.message_type == "AI":
+            elif msg.message_type == MessageType.AI:
                 history_obj.add_ai_message(msg.message_content)
             else:
                 raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid message_type: {msg.message_type}",
+                    status_code=400, detail=f"Invalid message_type: {msg.message_type}"
                 )
 
         # ChatMessageHistory 객체 전달
         result = await get_chat_response(
             req.question,
             history_obj,
-            req.history_id,
+            req.chat_bot_history_id,
             answer_key_retriever,
             feedback_retriever,
         )
 
-        if not isinstance(result, dict) or "answer" not in result:
+        if not isinstance(result, dict) or "message_content" not in result:
             raise HTTPException(
                 status_code=500, detail="Invalid response format from LLM."
             )
@@ -191,7 +197,14 @@ async def chat(req: ChatRequest) -> JSONResponse:
         return JSONResponse(
             content={
                 "success": True,
-                "response": result,
+                "content": {
+                    "message_type": MessageType.AI,
+                    "message_content": result.get("message_content"),
+                    "message_created_at": result.get("message_created_at"),
+                    "subject_name": req.subject_name,
+                    "file_name": req.file_name,
+                    "file_url": result.get("file_url"),
+                },
             }
         )
 

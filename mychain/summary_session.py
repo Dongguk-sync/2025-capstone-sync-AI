@@ -57,7 +57,7 @@ async def summarize_session(req: SummarySessionRequest) -> JSONResponse:
         return JSONResponse(
             content={
                 "success": True,
-                "summary": summary,
+                "content": summary,
             }
         )
     except ValueError as ve:
