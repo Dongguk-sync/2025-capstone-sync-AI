@@ -44,7 +44,7 @@ Return only a valid JSON object.
 Return your answer in JSON format with the following structure:
 {{
   "message_content": "<natural language answer>",
-  "message_created_at": "<response DATETIME>
+  "message_created_at": "<response DATETIME>"
   "file_url": "<answer key URL if available, otherwise null>"
 }}
 If the answer key is not relevant, set the url to null.
@@ -108,6 +108,8 @@ async def get_chat_response(
 
         retrieved_docs = await answer_key_retriever.aget_relevant_documents(question)
 
+        related_chunks = [doc.page_content for doc in retrieved_docs]
+
         # LLM이 BaseMessage 객체로 반환되었을 경우 content 추출
         if isinstance(result, BaseMessage):
             result = result.content
@@ -135,6 +137,7 @@ async def get_chat_response(
 
         result["subject_name"] = subject_name
         result["file_name"] = file_name
+        result["related_chunks"] = related_chunks
 
         return result
 
@@ -157,8 +160,6 @@ class ChatRequest(BaseModel):
     user_id: str
     chat_bot_history_id: str
     chat_bot_history: list[ChatMessage]
-    subject_name: str
-    file_name: str
 
 
 def get_retrievers(user_id: str):
@@ -213,9 +214,10 @@ async def chat(req: ChatRequest) -> JSONResponse:
                     "message_type": MessageType.AI,
                     "message_content": result.get("message_content"),
                     "message_created_at": result.get("message_created_at"),
-                    "subject_name": result.get("subject_name", req.subject_name),
-                    "file_name": result.get("file_name", req.file_name),
+                    "subject_name": result.get("subject_name"),
+                    "file_name": result.get("file_name"),
                     "file_url": result.get("file_url"),
+                    "related_chunks": result.get("related_chunks"),
                 },
             }
         )
