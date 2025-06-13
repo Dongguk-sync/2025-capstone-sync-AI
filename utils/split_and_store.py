@@ -8,7 +8,7 @@ split 함수:
 """
 
 from typing import List
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 MAX_CHUNK_LENGTH = 300

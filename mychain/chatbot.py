@@ -9,6 +9,7 @@ from operator import itemgetter
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from enum import Enum
 
 # langchain 관련 묶음
 from fastapi.responses import JSONResponse
@@ -42,8 +43,9 @@ Use the following pieces of retrieved context to answer the question.
 Return only a valid JSON object.
 Return your answer in JSON format with the following structure:
 {{
-  "answer": "<natural language answer>",
-  "url": "<answer key URL if available, otherwise null>"
+  "message_content": "<natural language answer>",
+  "message_created_at": "<response DATETIME>"
+  "file_url": "<answer key URL if available, otherwise null>"
 }}
 If the answer key is not relevant, set the url to null.
 If you don't know the answer, set both fields to null.
@@ -104,6 +106,10 @@ async def get_chat_response(
             config={"configurable": {"session_id": history_id}},
         )
 
+        retrieved_docs = await answer_key_retriever.aget_relevant_documents(question)
+
+        related_chunks = [doc.page_content for doc in retrieved_docs]
+
         # LLM이 BaseMessage 객체로 반환되었을 경우 content 추출
         if isinstance(result, BaseMessage):
             result = result.content
@@ -117,11 +123,21 @@ async def get_chat_response(
                     status_code=500, detail=f"LLM response is not valid JSON: {e}"
                 )
 
-        # 딕셔너리 아니면 에러
-        if not isinstance(result, dict) or "answer" not in result:
+        if not isinstance(result, dict) or "message_content" not in result:
             raise HTTPException(
                 status_code=500, detail="Invalid response format from LLM."
             )
+
+        subject_name = None
+        file_name = None
+        if retrieved_docs:
+            meta = retrieved_docs[0].metadata
+            subject_name = meta.get("subject")
+            file_name = meta.get("unit")
+
+        result["subject_name"] = subject_name
+        result["file_name"] = file_name
+        result["related_chunks"] = related_chunks
 
         return result
 
@@ -129,20 +145,24 @@ async def get_chat_response(
         raise HTTPException(status_code=500, detail=f"Chat response failed: {e}")
 
 
-# 요청 모델
+class MessageType(str, Enum):
+    HUMAN = "HUMAN"
+    AI = "AI"
+
+
 class ChatMessage(BaseModel):
-    message_type: str  # "user" or "AI"
+    message_type: MessageType  # "HUMAN" or "AI"
     message_content: str
 
 
 class ChatRequest(BaseModel):
     question: str
     user_id: str
-    history_id: str
-    chat_history: list[ChatMessage]
+    chat_bot_history_id: str
+    chat_bot_history: list[ChatMessage]
 
 
-def get_vectorstores(user_id: str):
+def get_retrievers(user_id: str):
     try:
         vectordb = get_or_create_user_chromadb(user_id=user_id)
         answer_key_retriever = vectordb.as_retriever(
@@ -156,34 +176,33 @@ def get_vectorstores(user_id: str):
         raise HTTPException(status_code=500, detail=f"VectorStore loading failed: {e}")
 
 
-@router.post("/chat")
+@router.post("/chatbot")
 async def chat(req: ChatRequest) -> JSONResponse:
     try:
-        answer_key_retriever, feedback_retriever = get_vectorstores(req.user_id)
+        answer_key_retriever, feedback_retriever = get_retrievers(req.user_id)
 
         # ChatMessageHistory 객체 생성
         history_obj = ChatMessageHistory()
-        for msg in req.chat_history:
-            if msg.message_type == "user":
+        for msg in req.chat_bot_history:
+            if msg.message_type == MessageType.HUMAN:
                 history_obj.add_user_message(msg.message_content)
-            elif msg.message_type == "AI":
+            elif msg.message_type == MessageType.AI:
                 history_obj.add_ai_message(msg.message_content)
             else:
                 raise HTTPException(
-                    status_code=400,
-                    detail=f"Invalid message_type: {msg.message_type}",
+                    status_code=400, detail=f"Invalid message_type: {msg.message_type}"
                 )
 
         # ChatMessageHistory 객체 전달
         result = await get_chat_response(
             req.question,
             history_obj,
-            req.history_id,
+            req.chat_bot_history_id,
             answer_key_retriever,
             feedback_retriever,
         )
 
-        if not isinstance(result, dict) or "answer" not in result:
+        if not isinstance(result, dict) or "message_content" not in result:
             raise HTTPException(
                 status_code=500, detail="Invalid response format from LLM."
             )
@@ -191,7 +210,15 @@ async def chat(req: ChatRequest) -> JSONResponse:
         return JSONResponse(
             content={
                 "success": True,
-                "response": result,
+                "content": {
+                    "message_type": MessageType.AI,
+                    "message_content": result.get("message_content"),
+                    "message_created_at": result.get("message_created_at"),
+                    "subject_name": result.get("subject_name"),
+                    "file_name": result.get("file_name"),
+                    "file_url": result.get("file_url"),
+                    "related_chunks": result.get("related_chunks"),
+                },
             }
         )
 
