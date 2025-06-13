@@ -106,7 +106,7 @@ async def get_chat_response(
             config={"configurable": {"session_id": history_id}},
         )
 
-        retrieved_docs = await answer_key_retriever.aget_relevant_documents(question)
+        retrieved_docs = await answer_key_retriever.ainvoke(question)
 
         related_chunks = [doc.page_content for doc in retrieved_docs]
 
